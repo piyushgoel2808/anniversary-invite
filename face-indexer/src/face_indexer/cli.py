@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import getpass
 import json
 import os
@@ -11,6 +12,22 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
+from face_indexer.autosync import (
+    DEFAULT_INTERVAL_MINUTES,
+    AutoSyncConfig,
+    disable_autosync,
+    enable_autosync,
+    get_autosync_status,
+    get_keychain_password,
+    has_keychain_password,
+    load_autosync_config,
+    read_recent_logs,
+    rotate_log_if_needed,
+    save_autosync_config,
+    save_keychain_password,
+    sync_overlap_lock,
+    uninstall_autosync,
+)
 from face_indexer.benchmark import (
     build_profiles_from_directory,
     export_benchmark_artifacts,
@@ -319,6 +336,205 @@ def _cmd_sync(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_autosync_setup(args: argparse.Namespace) -> int:
+    existing = load_autosync_config()
+    admin_user = args.admin_user or (existing.admin_user if existing else "")
+    if not admin_user:
+        admin_user = input("Gallery Admin username: ").strip()
+    if not admin_user:
+        print("Error: Admin username is required.", file=sys.stderr)
+        return 1
+
+    if getattr(args, "password_stdin", False):
+        password = sys.stdin.readline().rstrip("\r\n")
+    else:
+        password = getpass.getpass(f"Gallery Admin password for '{admin_user}' (hidden): ")
+    if not password:
+        print("Error: Admin password is required.", file=sys.stderr)
+        return 1
+
+    url = str(args.apps_script_url)
+    if not getattr(args, "skip_verify", False):
+        print(f"Verifying admin credentials for '{admin_user}'...", flush=True)
+        try:
+            with AppsScriptBackend(
+                apps_script_url=url,
+                admin_username=admin_user,
+                admin_password=password,
+            ):
+                pass
+        except Exception as exc:
+            print(f"Login verification failed: {exc}", file=sys.stderr)
+            return 1
+
+    save_keychain_password(admin_user, password)
+    cfg = AutoSyncConfig(
+        admin_user=admin_user,
+        interval_minutes=max(1, int(args.interval)),
+        delete_refs=not bool(args.keep_refs),
+        threshold=float(args.threshold),
+        apps_script_url=url,
+    )
+    save_autosync_config(cfg)
+    print(f"Saved admin password for '{admin_user}' securely in macOS Keychain.")
+    print(f"Default auto-sync interval set to every {cfg.interval_minutes} minutes.")
+    print("Auto-sync is currently OFF. Run 'uv run face-indexer autosync on' when ready.")
+    return 0
+
+
+def _cmd_autosync_on(args: argparse.Namespace) -> int:
+    cfg = load_autosync_config()
+    if cfg is None or not has_keychain_password(cfg.admin_user):
+        print(
+            "Auto-sync is not set up yet. Run 'uv run face-indexer autosync setup' first.",
+            file=sys.stderr,
+        )
+        return 1
+
+    interval = int(args.interval) if args.interval is not None else cfg.interval_minutes
+    updated = AutoSyncConfig(
+        admin_user=cfg.admin_user,
+        interval_minutes=max(1, interval),
+        delete_refs=cfg.delete_refs,
+        threshold=cfg.threshold,
+        apps_script_url=cfg.apps_script_url,
+    )
+    plist_path = enable_autosync(updated)
+    print(f"Auto-Sync is now ON (every {updated.interval_minutes} minutes while Mac is awake).")
+    print(f"LaunchAgent loaded: {plist_path}")
+    print("A sync has started in the background. Use 'autosync off' anytime to stop.")
+    return 0
+
+
+def _cmd_autosync_off(args: argparse.Namespace) -> int:
+    _ = args
+    was_loaded = disable_autosync()
+    if was_loaded:
+        print("Auto-Sync is now OFF (background scheduler stopped & removed).")
+    else:
+        print("Auto-Sync is OFF (was already stopped).")
+    print("It will remain OFF even after restart until you turn it back ON.")
+    return 0
+
+
+def _cmd_autosync_status(args: argparse.Namespace) -> int:
+    st = get_autosync_status()
+    store = _open_store(args)
+    db_stats = store.get_stats()
+    last_sync_at = store.get_sync_state("last_sync_at")
+
+    payload = {
+        "enabled": st.enabled,
+        "plist_exists": st.plist_exists,
+        "configured": st.configured,
+        "keychain_ready": st.keychain_ready,
+        "admin_user": st.admin_user,
+        "interval_minutes": st.interval_minutes,
+        "delete_refs": st.delete_refs,
+        "threshold": st.threshold,
+        "last_sync_at": last_sync_at,
+        "photos": db_stats["photos"],
+        "faces": db_stats["faces"],
+        "active_guests": db_stats["active_guests"],
+        "suggestions_pending": db_stats["suggestions_pending"],
+        "suggestions_confirmed": db_stats["suggestions_confirmed"],
+        "plist_path": st.plist_path,
+        "log_path": st.log_path,
+    }
+    if getattr(args, "json", False):
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    state_str = f"ON (every {st.interval_minutes} min)" if st.enabled else "OFF"
+    kc_str = f"Ready ({st.admin_user})" if st.keychain_ready else "Not configured"
+    print("\n=== Silver Jubilee Auto-Sync Status ===")
+    print(f"Auto-Sync:        {state_str}")
+    print(f"Keychain Admin:   {kc_str}")
+    print(f"Threshold:        {st.threshold}")
+    print(f"Delete Drive Ref: {'Yes' if st.delete_refs else 'No'}")
+    print(f"Last Sync (UTC):  {last_sync_at or 'Never'}")
+    print(
+        f"Local Index DB:   {db_stats['photos']} photo(s), {db_stats['faces']} face(s), "
+        f"{db_stats['active_guests']} guest(s), {db_stats['suggestions_pending']} pending"
+    )
+    print(f"Log File:         {st.log_path}")
+    return 0
+
+
+def _cmd_autosync_logs(args: argparse.Namespace) -> int:
+    print(read_recent_logs(max_lines=max(1, int(args.lines))))
+    return 0
+
+
+def _cmd_autosync_run_now(args: argparse.Namespace) -> int:
+    rotate_log_if_needed()
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def _log(msg: str) -> None:
+        now_s = datetime.datetime.now().strftime("%H:%M:%S")
+        print(f"[{now_s}] {msg}", flush=True)
+
+    with sync_overlap_lock() as acquired:
+        if not acquired:
+            print(
+                f"[{ts}] Another sync is already running — skipping overlapping tick.",
+                flush=True,
+            )
+            return 0
+
+        cfg = load_autosync_config()
+        if cfg is None:
+            print(
+                f"[{ts}] Auto-sync not configured. Run 'face-indexer autosync setup' first.",
+                file=sys.stderr,
+                flush=True,
+            )
+            return 1
+
+        try:
+            password = get_keychain_password(cfg.admin_user)
+        except Exception as exc:
+            print(f"[{ts}] Keychain error: {exc}", file=sys.stderr, flush=True)
+            return 1
+
+        print(f"\n[{ts}] === Scheduled Sync Starting (admin={cfg.admin_user}) ===", flush=True)
+        try:
+            store = _open_store(args)
+            engine = FaceRecognitionEngine(models_dir=Path(args.models_dir))
+            with AppsScriptBackend(
+                apps_script_url=cfg.apps_script_url,
+                admin_username=cfg.admin_user,
+                admin_password=password,
+            ) as backend:
+                report = run_sync(
+                    backend,
+                    store,
+                    engine,
+                    threshold=cfg.threshold,
+                    delete_refs_after_processing=cfg.delete_refs,
+                    progress_cb=_log,
+                )
+            _log(
+                f"Done in {report.elapsed_ms:.0f}ms | profiles={report.profiles_processed} "
+                f"new_photos={report.photos_newly_indexed} skipped={report.photos_skipped_cached} "
+                f"pushed={report.suggestions_pushed} errors={len(report.errors)}"
+            )
+            return 0
+        except Exception as exc:
+            _log(f"Sync skipped/failed (will retry next tick): {exc}")
+            return 1
+
+
+def _cmd_autosync_uninstall(args: argparse.Namespace) -> int:
+    _ = args
+    res = uninstall_autosync()
+    print("Auto-Sync completely uninstalled:")
+    print(f"  Background agent stopped: {'Yes' if res['was_loaded'] else 'Already stopped'}")
+    print(f"  Keychain entry removed:   {'Yes' if res['keychain_removed'] else 'None found'}")
+    print(f"  Config file removed:      {'Yes' if res['config_removed'] else 'None found'}")
+    return 0
+
+
 def _add_db_args(subparser: argparse.ArgumentParser) -> None:
     subparser.add_argument(
         "--db",
@@ -473,6 +689,86 @@ def build_parser() -> argparse.ArgumentParser:
     sy.add_argument("--no-original-retry", action="store_true")
     _add_db_args(sy)
     sy.set_defaults(func=_cmd_sync)
+
+    # User-controlled macOS Auto-Sync (Keychain + LaunchAgent)
+    as_parser = sub.add_parser(
+        "autosync",
+        help="Control macOS Auto-Sync (setup, on, off, status, logs, run-now, uninstall).",
+    )
+    as_sub = as_parser.add_subparsers(dest="autosync_command", required=True)
+
+    as_setup = as_sub.add_parser(
+        "setup",
+        help="One-time setup: verify Admin login & save password in macOS Keychain.",
+    )
+    as_setup.add_argument("--admin-user", default=None, help="Gallery Admin username")
+    as_setup.add_argument(
+        "--interval",
+        type=int,
+        default=DEFAULT_INTERVAL_MINUTES,
+        help=f"Default auto-sync interval in minutes (default: {DEFAULT_INTERVAL_MINUTES})",
+    )
+    as_setup.add_argument(
+        "--threshold",
+        type=float,
+        default=CALIBRATED_COSINE_THRESHOLD,
+        help=f"Cosine similarity threshold (default: {CALIBRATED_COSINE_THRESHOLD})",
+    )
+    as_setup.add_argument(
+        "--keep-refs",
+        action="store_true",
+        help="Keep raw Drive reference selfies instead of trashing them after embedding",
+    )
+    as_setup.add_argument(
+        "--apps-script-url",
+        default=DEFAULT_APPS_SCRIPT_URL,
+        help="Apps Script Web App /exec URL",
+    )
+    as_setup.add_argument(
+        "--password-stdin",
+        action="store_true",
+        help="Read admin password from stdin (used securely by clickable macOS controller)",
+    )
+    as_setup.add_argument(
+        "--skip-verify",
+        action="store_true",
+        help="Skip online adminLogin verification during setup",
+    )
+    as_setup.set_defaults(func=_cmd_autosync_setup)
+
+    as_on = as_sub.add_parser("on", help="Turn Auto-Sync ON (starts now & repeats on interval).")
+    as_on.add_argument(
+        "--interval",
+        type=int,
+        default=None,
+        help="Override interval in minutes (default: uses saved interval, 15 min)",
+    )
+    as_on.set_defaults(func=_cmd_autosync_on)
+
+    as_off = as_sub.add_parser(
+        "off", help="Turn Auto-Sync OFF (stops immediately & stays OFF across reboots)."
+    )
+    as_off.set_defaults(func=_cmd_autosync_off)
+
+    as_status = as_sub.add_parser("status", help="Show Auto-Sync ON/OFF state & local DB stats.")
+    as_status.add_argument("--json", action="store_true", help="Print machine-readable JSON")
+    _add_db_args(as_status)
+    as_status.set_defaults(func=_cmd_autosync_status)
+
+    as_logs = as_sub.add_parser("logs", help="Show recent Auto-Sync log entries.")
+    as_logs.add_argument("--lines", type=int, default=40, help="Number of trailing lines")
+    as_logs.set_defaults(func=_cmd_autosync_logs)
+
+    as_run = as_sub.add_parser(
+        "run-now", help="Run one Keychain-authenticated sync immediately (with overlap lock)."
+    )
+    _add_db_args(as_run)
+    as_run.set_defaults(func=_cmd_autosync_run_now)
+
+    as_un = as_sub.add_parser(
+        "uninstall", help="Turn OFF Auto-Sync and remove LaunchAgent, config & Keychain entry."
+    )
+    as_un.set_defaults(func=_cmd_autosync_uninstall)
 
     return parser
 

@@ -83,12 +83,30 @@ uv run ruff check src tests
 
 No Google Cloud Console project, no billing, and no OAuth setup required — `face-indexer sync` authenticates directly with your existing Silver Jubilee Apps Script Web App using your **Admin username & password** (₹0 forever).
 
-### Run Incremental Sync
+### Run Incremental Sync (Manual)
 ```bash
 cd face-indexer
 uv run face-indexer sync --delete-refs
 ```
 *(You will be prompted for your existing Gallery Admin username and password. Your password is never stored on disk, and the temporary session token is revoked immediately when sync finishes.)*
+
+### User-Controlled macOS Auto-Sync (15-Minute Interval, Full ON/OFF Control)
+
+**Option A — Clickable macOS App (No Terminal Needed):**
+- Double-click **`Face Sync Control.command`** in Finder inside `face-indexer/`.
+- On first click, it prompts once for your Gallery Admin username & password (stored securely in **macOS Keychain**), then shows a native control dialog with **Turn ON (15m)**, **Turn OFF**, and **Sync Now**.
+
+**Option B — Terminal Commands:**
+```bash
+cd face-indexer
+uv run face-indexer autosync setup            # One-time Keychain password setup (default: 15 min)
+uv run face-indexer autosync on               # Turn ON (runs now & every 15 min while Mac is awake)
+uv run face-indexer autosync off              # Turn OFF (stops immediately & stays OFF after reboot)
+uv run face-indexer autosync status           # Check ON/OFF state, last sync, and DB counts
+uv run face-indexer autosync logs             # View recent scheduled sync log entries
+uv run face-indexer autosync run-now          # Trigger one immediate sync using Keychain
+uv run face-indexer autosync uninstall        # Turn OFF and remove LaunchAgent + Keychain entry
+```
 
 What `sync` does on every run:
 1. Pulls guest `CONFIRMED` / `REJECTED` reviews from `FACE_MATCHES` into local SQLite.
