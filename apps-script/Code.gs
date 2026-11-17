@@ -19,34 +19,34 @@ function doGet(e) {
         ? 'Admin Panel — Silver Jubilee Memories'
         : APP_CONFIG.APP_NAME)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=5')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DENY);
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   } catch (err) {
-    // Graceful placeholder while Phase 6/7 HTML templates are being built
+    Logger.log('doGet error: ' + err.message);
     return HtmlService.createHtmlOutput(
       '<!DOCTYPE html><html><body style="font-family:Georgia,serif;background:#FAF7F2;color:#1B3664;text-align:center;padding:60px 20px;">' +
-      '<h2>Silver Jubilee Memories Backend Active</h2>' +
-      '<p>Apps Script backend is online. Gallery UI templates will be connected in Phase 6.</p>' +
+      '<h2>Silver Jubilee Memories Gallery</h2>' +
+      '<p>The gallery is temporarily unavailable. Please refresh in a moment.</p>' +
       '</body></html>'
     ).setTitle(APP_CONFIG.APP_NAME);
   }
 }
 
 /**
- * HTML Service partial include helper (used for <?!= include('Styles'); ?>)
+ * HTML Service partial include helper (private — used server-side for <?!= include_('Styles'); ?>)
  */
-function include(filename) {
+function include_(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 /**
- * PHASE 2 SMOKE TEST (Run from Apps Script Editor after setupInfrastructure())
+ * PHASE 2 SMOKE TEST (Private — run via temporary editor wrapper after setupInfrastructure_())
  * Verifies:
  * 1. Private Drive upload of a valid 1x1 PNG image (magic bytes verified)
  * 2. Sharing permission is strictly PRIVATE
  * 3. Private read-back as Base64 data URL succeeds
  * 4. Cleanup trashes the test image cleanly
  */
-function runPhase2SmokeTest() {
+function runPhase2SmokeTest_() {
   var thumbFolderId = getRequiredProp_(APP_CONFIG.PROP_KEYS.THUMBNAILS_FOLDER_ID);
   // Valid 1x1 transparent PNG in Base64
   var tinyPngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -75,7 +75,7 @@ function runPhase2SmokeTest() {
 }
 
 /**
- * PHASE 3 AUTHENTICATION ACCEPTANCE TEST SUITE (Run from Apps Script Editor)
+ * PHASE 3 AUTHENTICATION ACCEPTANCE TEST SUITE (Private — run via temporary editor wrapper)
  * Verifies:
  * 1. CSV guest import + mobile normalization (+91 / 0 / spaces) + hashing
  * 2. Registered guest login succeeds
@@ -85,7 +85,7 @@ function runPhase2SmokeTest() {
  * 6. Revoked upload_permission throws FORBIDDEN
  * 7. Logout revokes session token immediately
  */
-function runPhase3AuthTests() {
+function runPhase3AuthTests_() {
   var testUser = 'test_guest_' + Math.floor(Date.now() / 1000);
   var csv = [
     'guest_name,username,mobile,upload_permission',

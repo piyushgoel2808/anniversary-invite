@@ -11,7 +11,7 @@ function getPhotosSheet_() {
   var ss = SpreadsheetApp.openById(getRequiredProp_(APP_CONFIG.PROP_KEYS.SPREADSHEET_ID));
   var sheet = ss.getSheetByName(APP_CONFIG.SHEETS.PHOTOS);
   if (!sheet) {
-    throw new Error('PHOTO_DATABASE sheet missing. Run setupInfrastructure() first.');
+    throw new Error('PHOTO_DATABASE sheet missing. Run setupInfrastructure_() first.');
   }
   return sheet;
 }

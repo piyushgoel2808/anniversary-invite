@@ -1,12 +1,12 @@
 /**
  * Tests.gs — Phase 8 Compulsory Security & Permission Verification Suite
  *
- * Run runPhase8SecurityTestSuite() directly inside the Apps Script Editor after
- * setupInfrastructure() and setAdminCredentials() have been executed.
+ * Private runner (NEVER exposed via google.script.run).
+ * Run via a temporary editor wrapper after setupInfrastructure_() and setAdminCredentials_().
  * Logs a full PASS/FAIL matrix and cleans up its temporary test artifacts automatically.
  */
 
-function runPhase8SecurityTestSuite() {
+function runPhase8SecurityTestSuite_() {
   var results = [];
   function assert(name, condition, detail) {
     results.push({ test: name, passed: Boolean(condition), detail: detail || '' });
@@ -27,19 +27,23 @@ function runPhase8SecurityTestSuite() {
   assert('2. Registered guest logs in successfully', login.ok && Boolean(login.token));
   var guestToken = login.token;
 
-  // Upload a valid 1x1 PNG via uploadGuestPhotoBase64
+  // Upload a valid 1x1 PNG via uploadGuestPhotoBase64 (with intentionally spoofed SVG data: prefix on thumb)
   var validPngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
   var upOk = uploadGuestPhotoBase64({
     sessionToken: guestToken,
     originalFilename: 'sec_test.png',
     mimeType: 'image/png',
     originalBase64: validPngB64,
-    thumbBase64: validPngB64,
+    thumbBase64: 'data:image/svg+xml;base64,' + validPngB64,
     mediumBase64: validPngB64,
     width: 1,
     height: 1
   });
   assert('3. Authenticated guest uploads genuine image', upOk.ok && upOk.photo && upOk.photo.photo_id);
+  assert(
+    '3b. Spoofed thumbnail data: MIME prefix sanitized to verified PNG',
+    upOk.ok && upOk.photo && upOk.photo.thumbDataUrl.indexOf('data:image/png;base64,') === 0
+  );
   var photoId = upOk.photo ? upOk.photo.photo_id : '';
 
   // Duplicate upload prevention
@@ -122,18 +126,47 @@ function runPhase8SecurityTestSuite() {
   var origFile = DriveApp.getFileById(photoRec.drive_file_id);
   assert('17. Original Drive file sharing is strictly PRIVATE', origFile.getSharingAccess() === DriveApp.Access.PRIVATE);
 
-  // Deactivating guest immediately revokes active token access
+  // Revoking upload_permission blocks uploads (FORBIDDEN) while keeping view access
   var guestRec = findGuestByUsername_(testUser);
+  updateGuestFlags_(guestRec.guest_id, { upload_permission: false });
+  var noUploadAttempt = uploadGuestPhotoBase64({
+    sessionToken: guestToken,
+    originalFilename: 'blocked.png',
+    mimeType: 'image/png',
+    originalBase64: validPngB64,
+    thumbBase64: validPngB64,
+    mediumBase64: validPngB64,
+    width: 1,
+    height: 1
+  });
+  var stillCanView = getPrivatePhoto(photoId, guestToken, 'thumbnail');
+  assert('18. Guest without upload_permission blocked from uploading (FORBIDDEN)', !noUploadAttempt.ok && noUploadAttempt.error.indexOf('FORBIDDEN') !== -1);
+  assert('19. Guest without upload_permission can still view photos', stillCanView.ok);
+
+  // Deactivating guest immediately revokes active token access
   updateGuestFlags_(guestRec.guest_id, { status: 'inactive' });
   var revokedAttempt = getPrivatePhoto(photoId, guestToken, 'thumbnail');
-  assert('18. Deactivated guest immediately loses access', !revokedAttempt.ok && revokedAttempt.error.indexOf('UNAUTHORIZED') !== -1);
+  assert('20. Deactivated guest immediately loses access', !revokedAttempt.ok && revokedAttempt.error.indexOf('UNAUTHORIZED') !== -1);
+
+  // Durable logout revocation survives CacheService eviction
+  updateGuestFlags_(guestRec.guest_id, { status: 'active', upload_permission: true });
+  var logoutPayload = verifyToken_(guestToken);
+  guestLogout(guestToken);
+  if (logoutPayload && logoutPayload.jti) {
+    cacheRemove_(CACHE_KEYS.REVOKED_PREFIX + logoutPayload.jti);
+    cacheRemove_(CACHE_KEYS.REVOKED_SHARD_PREFIX + revokedShardForJti_(logoutPayload.jti));
+  }
+  var afterCacheEvict = getPrivatePhoto(photoId, guestToken, 'thumbnail');
+  assert('21. Durable logout revocation survives CacheService eviction', !afterCacheEvict.ok && afterCacheEvict.error.indexOf('UNAUTHORIZED') !== -1);
+  updateGuestFlags_(guestRec.guest_id, { status: 'inactive' });
 
   // Cleanup: trash test Drive files & mark test photo deleted
   trashPrivateFile_(photoRec.drive_file_id);
   trashPrivateFile_(photoRec.thumbnail_id);
   trashPrivateFile_(photoRec.medium_image_id);
   var photoSheet = getPhotosSheet_();
-  photoSheet.getRange(photoRec.rowNumber, 13).setValue('deleted');
+  var statusCol = APP_CONFIG.PHOTO_HEADERS.indexOf('status') + 1;
+  photoSheet.getRange(photoRec.rowNumber, statusCol).setValue('deleted');
   SpreadsheetApp.flush();
   invalidatePhotosCache_();
   invalidateThumbnailCache_(photoId);

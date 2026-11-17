@@ -9,13 +9,15 @@ function getGuestsSheet_() {
   var ss = SpreadsheetApp.openById(getRequiredProp_(APP_CONFIG.PROP_KEYS.SPREADSHEET_ID));
   var sheet = ss.getSheetByName(APP_CONFIG.SHEETS.GUESTS);
   if (!sheet) {
-    throw new Error('GUEST_DATABASE sheet missing. Run setupInfrastructure() first.');
+    throw new Error('GUEST_DATABASE sheet missing. Run setupInfrastructure_() first.');
   }
   return sheet;
 }
 
 /**
  * Loads all guests from CacheService or via a single batch Sheets read.
+ * Uses version-checked cache publication so a slow reader that started before an
+ * admin deactivation/update can NEVER overwrite the cache with a stale index.
  * Returns { byUsername: {}, byId: {}, list: [] }.
  */
 function loadGuestsIndex_(forceRefresh) {
@@ -26,12 +28,15 @@ function loadGuestsIndex_(forceRefresh) {
     }
   }
 
+  var verBefore = getGuestsCacheVer_();
   var sheet = getGuestsSheet_();
   var lastRow = sheet.getLastRow();
   var index = { byUsername: {}, byId: {}, list: [] };
 
   if (lastRow <= 1) {
-    cachePutJson_(CACHE_KEYS.GUESTS_INDEX, index, 300);
+    if (getGuestsCacheVer_() === verBefore) {
+      cachePutJson_(CACHE_KEYS.GUESTS_INDEX, index, 300);
+    }
     return index;
   }
 
@@ -59,7 +64,10 @@ function loadGuestsIndex_(forceRefresh) {
     index.list.push(record);
   }
 
-  cachePutJson_(CACHE_KEYS.GUESTS_INDEX, index, 300);
+  // Publish to shared cache ONLY if no concurrent guest update occurred during the Sheet read
+  if (getGuestsCacheVer_() === verBefore) {
+    cachePutJson_(CACHE_KEYS.GUESTS_INDEX, index, 300);
+  }
   return index;
 }
 
@@ -136,7 +144,9 @@ function importGuestsFromCsv_(csvText) {
     throw new Error('CSV must contain a header row and at least one guest row.');
   }
 
-  var header = parsed[0].map(function (h) { return h.toLowerCase().replace(/\s+/g, '_'); });
+  var header = parsed[0].map(function (h) {
+    return h.replace(/^\uFEFF/, '').toLowerCase().replace(/\s+/g, '_');
+  });
   var nameIdx = header.indexOf('guest_name');
   var userIdx = header.indexOf('username');
   var mobileIdx = header.indexOf('mobile');
@@ -204,7 +214,10 @@ function importGuestsFromCsv_(csvText) {
     if (rowsToAppend.length > 0) {
       var sheet = getGuestsSheet_();
       var startRow = sheet.getLastRow() + 1;
-      sheet.getRange(startRow, 1, rowsToAppend.length, APP_CONFIG.GUEST_HEADERS.length).setValues(rowsToAppend);
+      var targetRange = sheet.getRange(startRow, 1, rowsToAppend.length, APP_CONFIG.GUEST_HEADERS.length);
+      // Plain-text format prevents Sheets from coercing leading '-' hashes, numeric usernames ('00123'/'1e5'), or ISO dates
+      targetRange.setNumberFormat('@');
+      targetRange.setValues(rowsToAppend);
       SpreadsheetApp.flush();
       invalidateGuestsCache_();
     }

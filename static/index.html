@@ -1236,6 +1236,7 @@
         if (MEMORIES_GALLERY_URL) {
           memoriesBtn.setAttribute('href', MEMORIES_GALLERY_URL);
           memoriesBtn.setAttribute('target', '_blank');
+          memoriesBtn.setAttribute('rel', 'noopener noreferrer');
         } else {
           memoriesBtn.addEventListener('click', (e) => {
             e.preventDefault();

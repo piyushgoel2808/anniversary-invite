@@ -136,18 +136,19 @@ function processValidatedUpload_(input) {
   var mediumFolderId = getRequiredProp_(APP_CONFIG.PROP_KEYS.MEDIUM_FOLDER_ID);
 
   var createdFileIds = [];
+  var writtenPhotoRow = null;
   try {
     // 5. Save untouched original privately in ORIGINAL_PHOTOS/
     var origBlob = Utilities.newBlob(origBytes, verifiedOrigMime, photoId + '_' + safeOriginalName);
     var driveFileId = savePrivateBlob_(origFolderId, origBlob, photoId + '_' + safeOriginalName);
     createdFileIds.push(driveFileId);
 
-    // 6. Save WebP/JPEG thumbnail privately in THUMBNAILS/
+    // 6. Save WebP/JPEG thumbnail privately in THUMBNAILS/ (extension matches verified MIME)
     var thumbSaved = savePrivateBase64Image_(
       thumbFolderId,
       input.thumbBase64,
       'image/webp',
-      photoId + '_thumb.webp'
+      photoId + '_thumb'
     );
     createdFileIds.push(thumbSaved.fileId);
 
@@ -156,7 +157,7 @@ function processValidatedUpload_(input) {
       mediumFolderId,
       input.mediumBase64,
       'image/webp',
-      photoId + '_medium.webp'
+      photoId + '_medium'
     );
     createdFileIds.push(mediumSaved.fileId);
 
@@ -186,13 +187,14 @@ function processValidatedUpload_(input) {
       }
 
       var sheet = getPhotosSheet_();
+      var literalFilename = /^[=+\-@]/.test(safeOriginalName) ? ("'" + safeOriginalName) : safeOriginalName;
       var row = [
         photoId,
         driveFileId,
         thumbSaved.fileId,
         mediumSaved.fileId,
         guest.guest_id, // Server-attributed guest_id ONLY
-        safeOriginalName,
+        literalFilename,
         nowIso,
         verifiedOrigMime,
         origBytes.length,
@@ -201,17 +203,19 @@ function processValidatedUpload_(input) {
         height,
         'active'
       ];
-      sheet.appendRow(row);
+      var nextRow = sheet.getLastRow() + 1;
+      var rowRange = sheet.getRange(nextRow, 1, 1, APP_CONFIG.PHOTO_HEADERS.length);
+      rowRange.setNumberFormat('@');
+      rowRange.setValues([row]);
+      writtenPhotoRow = nextRow;
       SpreadsheetApp.flush();
       invalidatePhotosCache_();
     } finally {
       lock.releaseLock();
     }
 
-    // 9. Pre-warm disposable thumbnail cache if small enough (< 95 KB)
-    var thumbDataUrl = input.thumbBase64.indexOf('data:') === 0
-      ? input.thumbBase64
-      : ('data:' + thumbSaved.mimeType + ';base64,' + input.thumbBase64);
+    // 9. Pre-warm disposable thumbnail cache using strictly verified MIME prefix
+    var thumbDataUrl = thumbSaved.dataUrl;
     putCachedThumbnail_(photoId, thumbDataUrl);
 
     return {
@@ -227,9 +231,44 @@ function processValidatedUpload_(input) {
       }
     };
   } catch (err) {
-    // Atomic rollback: trash any partially uploaded private Drive files
-    for (var i = 0; i < createdFileIds.length; i++) {
-      trashPrivateFile_(createdFileIds[i]);
+    // Roll back written metadata row BEFORE trashing Drive files so no active row references trashed files
+    var rowRollbackOk = true;
+    if (writtenPhotoRow !== null) {
+      rowRollbackOk = false;
+      var rbLock = LockService.getScriptLock();
+      var rbLocked = rbLock.tryLock(10000);
+      if (rbLocked) {
+        try {
+          var rbSheet = getPhotosSheet_();
+          var currentLast = rbSheet.getLastRow();
+          var foundRow = -1;
+          if (currentLast >= 2) {
+            // Locate exact row by photoId (safe even if another concurrent rollback shifted row indices)
+            var idColValues = rbSheet.getRange(2, 1, currentLast - 1, 1).getValues();
+            for (var rIdx = idColValues.length - 1; rIdx >= 0; rIdx--) {
+              if (String(idColValues[rIdx][0] || '') === photoId) {
+                foundRow = rIdx + 2;
+                break;
+              }
+            }
+          }
+          if (foundRow !== -1) {
+            rbSheet.deleteRow(foundRow);
+            SpreadsheetApp.flush();
+            invalidatePhotosCache_();
+          }
+          rowRollbackOk = true;
+        } catch (rbErr) {
+          Logger.log('Upload rollback warning for ' + photoId + ': ' + rbErr.message);
+        } finally {
+          rbLock.releaseLock();
+        }
+      }
+    }
+    if (rowRollbackOk) {
+      for (var i = 0; i < createdFileIds.length; i++) {
+        trashPrivateFile_(createdFileIds[i]);
+      }
     }
     throw err;
   }

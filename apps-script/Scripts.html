@@ -121,10 +121,39 @@
     resetAndLoadGallery();
   }
 
+  var galleryGen = 0;
+  var uploadSessionGen = 0;
+
+  function clearUploadQueue() {
+    (state.uploadQueue || []).forEach(function (q) {
+      if (q && q.previewUrl) {
+        try { URL.revokeObjectURL(q.previewUrl); } catch (e) {}
+      }
+    });
+    state.uploadQueue = [];
+    state.isUploading = false;
+    if (typeof renderUploadQueue === 'function') {
+      renderUploadQueue();
+    }
+  }
+
   function returnToLogin(message) {
+    galleryGen++;
+    uploadSessionGen++;
+    state.isLoadingPage = false;
     state.token = '';
     state.guest = null;
+    state.photos = [];
+    state.photoMap = {};
+    state.thumbQueue = [];
+    state.lightboxIndex = -1;
+    retriedBatchIds = {};
+    clearUploadQueue();
     sessionStorage.removeItem(STORAGE_TOKEN_KEY);
+    // Wipe private image data URLs from DOM immediately on logout
+    masonryEl.innerHTML = '';
+    lightboxImg.src = '';
+    document.body.style.overflow = '';
     galleryView.classList.add('hidden');
     uploadModal.classList.add('hidden');
     lightboxEl.classList.add('hidden');
@@ -310,15 +339,21 @@
     entry.boxEl.classList.add('loaded');
   }
 
+  var retriedBatchIds = {};
   function pumpThumbnailQueue() {
     while (state.activeThumbCalls < MAX_CONCURRENT_THUMB_CALLS && state.thumbQueue.length > 0) {
       var batch = state.thumbQueue.splice(0, THUMB_BATCH_SIZE);
+      var reqGen = galleryGen;
       state.activeThumbCalls++;
 
-      (function (ids) {
+      (function (ids, gen) {
         google.script.run
           .withSuccessHandler(function (res) {
             state.activeThumbCalls--;
+            if (gen !== galleryGen) {
+              pumpThumbnailQueue();
+              return;
+            }
             if (res && res.ok && res.items) {
               Object.keys(res.items).forEach(function (pid) {
                 var entry = state.photoMap[pid];
@@ -333,17 +368,38 @@
           })
           .withFailureHandler(function () {
             state.activeThumbCalls--;
-            pumpThumbnailQueue();
+            if (gen !== galleryGen) {
+              pumpThumbnailQueue();
+              return;
+            }
+            // Retry each failed thumbnail once after a brief backoff
+            var toRetry = ids.filter(function (id) {
+              if (retriedBatchIds[id]) return false;
+              retriedBatchIds[id] = true;
+              return true;
+            });
+            if (toRetry.length > 0) {
+              setTimeout(function () {
+                if (gen !== galleryGen) return;
+                Array.prototype.push.apply(state.thumbQueue, toRetry);
+                pumpThumbnailQueue();
+              }, 1200);
+            } else {
+              pumpThumbnailQueue();
+            }
           })
           .getPrivatePhotoBatch(ids, state.token);
-      })(batch);
+      })(batch, reqGen);
     }
   }
 
   function resetAndLoadGallery() {
+    galleryGen++;
+    state.isLoadingPage = false;
     state.photos = [];
     state.photoMap = {};
     state.thumbQueue = [];
+    retriedBatchIds = {};
     state.page = 0;
     state.hasMore = false;
     buildMasonryColumns();
@@ -357,12 +413,14 @@
   function loadNextPage() {
     if (state.isLoadingPage) return;
     state.isLoadingPage = true;
+    var gen = galleryGen;
     loadMoreBtn.disabled = true;
     loadMoreBtn.textContent = 'Loading...';
 
     var targetPage = state.page + 1;
     google.script.run
       .withSuccessHandler(function (res) {
+        if (gen !== galleryGen) return;
         state.isLoadingPage = false;
         skeletonEl.classList.add('hidden');
         loadMoreBtn.disabled = false;
@@ -401,6 +459,7 @@
         }
       })
       .withFailureHandler(function () {
+        if (gen !== galleryGen) return;
         state.isLoadingPage = false;
         skeletonEl.classList.add('hidden');
         loadMoreBtn.disabled = false;
@@ -412,6 +471,16 @@
 
   loadMoreBtn.addEventListener('click', loadNextPage);
   refreshBtn.addEventListener('click', resetAndLoadGallery);
+
+  // Automatic infinite-scroll pagination alongside the Load More button
+  if (typeof IntersectionObserver !== 'undefined') {
+    var scrollObserver = new IntersectionObserver(function (entries) {
+      if (entries[0] && entries[0].isIntersecting && state.hasMore && !state.isLoadingPage && state.token) {
+        loadNextPage();
+      }
+    }, { rootMargin: '220px' });
+    scrollObserver.observe(loadMoreWrap);
+  }
 
   // Re-layout masonry columns smoothly on orientation/resize change
   var resizeTimer = null;
@@ -494,8 +563,13 @@
             lightboxImg.src = res.dataUrl;
           }
         } else if (res && res.error) {
-          handleServerAuthError(res.error);
+          if (!handleServerAuthError(res.error)) {
+            showToast('Could not load higher-resolution preview.', true);
+          }
         }
+      })
+      .withFailureHandler(function () {
+        showToast('Network error loading photograph. Showing preview.', true);
       })
       .getPrivatePhoto(activeId, state.token, 'medium');
   }
@@ -546,6 +620,12 @@
   closeUploadBtn.addEventListener('click', closeUploadModal);
 
   dropzone.addEventListener('click', function () { filePicker.click(); });
+  dropzone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      filePicker.click();
+    }
+  });
   dropzone.addEventListener('dragover', function (e) {
     e.preventDefault();
     dropzone.classList.add('dragover');
@@ -728,7 +808,7 @@
    * Sends original via Apps Script native HTML <form> Blob transport (avoiding Base64 bloat),
    * falling back to Base64 transport if DataTransfer is unavailable.
    */
-  function sendSinglePhoto(item, derivatives) {
+  function sendSinglePhoto(item, derivatives, sessionToken) {
     return new Promise(function (resolve, reject) {
       var useFormBlob = false;
       try {
@@ -743,8 +823,16 @@
         useFormBlob = false;
       }
 
+      function clearHiddenForm() {
+        var fi = document.getElementById('hidden-original-file');
+        if (fi) fi.value = '';
+        document.getElementById('hidden-thumb-b64').value = '';
+        document.getElementById('hidden-medium-b64').value = '';
+        document.getElementById('hidden-session-token').value = '';
+      }
+
       if (useFormBlob) {
-        document.getElementById('hidden-session-token').value = state.token;
+        document.getElementById('hidden-session-token').value = sessionToken;
         document.getElementById('hidden-original-name').value = item.file.name;
         document.getElementById('hidden-thumb-b64').value = derivatives.thumbBase64;
         document.getElementById('hidden-medium-b64').value = derivatives.mediumBase64;
@@ -752,8 +840,8 @@
         document.getElementById('hidden-height').value = String(derivatives.height);
 
         google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(reject)
+          .withSuccessHandler(function (r) { clearHiddenForm(); resolve(r); })
+          .withFailureHandler(function (err) { clearHiddenForm(); reject(err); })
           .uploadGuestPhotoForm(document.getElementById('hidden-blob-form'));
       } else {
         readFileAsDataUrl(item.file).then(function (origDataUrl) {
@@ -761,7 +849,7 @@
             .withSuccessHandler(resolve)
             .withFailureHandler(reject)
             .uploadGuestPhotoBase64({
-              sessionToken: state.token,
+              sessionToken: sessionToken,
               originalFilename: item.file.name,
               mimeType: item.file.type,
               originalBase64: origDataUrl,
@@ -776,12 +864,15 @@
   }
 
   async function processUploadQueueSequential() {
-    if (state.isUploading) return;
+    if (state.isUploading || !state.token) return;
+    var workerGen = uploadSessionGen;
+    var workerToken = state.token;
     state.isUploading = true;
     renderUploadQueue();
 
     var uploadedCount = 0;
     for (var i = 0; i < state.uploadQueue.length; i++) {
+      if (workerGen !== uploadSessionGen) return;
       var item = state.uploadQueue[i];
       if (item.status !== 'pending') continue;
 
@@ -791,14 +882,18 @@
         renderUploadQueue();
 
         var derivatives = await generateDerivatives(item.file);
+        if (workerGen !== uploadSessionGen) return;
 
         item.status = 'uploading';
         item.progress = 60;
         renderUploadQueue();
 
-        var res = await sendSinglePhoto(item, derivatives);
+        var res = await sendSinglePhoto(item, derivatives, workerToken);
+        if (workerGen !== uploadSessionGen) return;
         if (!res || !res.ok) {
           if (handleServerAuthError(res && res.error)) {
+            item.status = 'pending';
+            item.progress = 0;
             state.isUploading = false;
             return;
           }
@@ -810,6 +905,7 @@
         if (!res.duplicate) uploadedCount++;
         renderUploadQueue();
       } catch (err) {
+        if (workerGen !== uploadSessionGen) return;
         item.status = 'error';
         item.progress = 0;
         item.error = err.message || 'Upload failed';
@@ -817,6 +913,7 @@
       }
     }
 
+    if (workerGen !== uploadSessionGen) return;
     state.isUploading = false;
     renderUploadQueue();
 

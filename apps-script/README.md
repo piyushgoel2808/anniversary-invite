@@ -36,21 +36,28 @@ clasp push -f
 
 ## Step 3 — Run One-Time Setup & Security Verification
 
-1. In the Apps Script editor toolbar, select **`setupInfrastructure`** and click **Run**.
+> **Security Note:** All setup and test helpers (`setupInfrastructure_`, `setAdminCredentials_`, `runPhase2SmokeTest_`, `runPhase3AuthTests_`, `runPhase8SecurityTestSuite_`) intentionally end with a trailing underscore (`_`) so Apps Script **never** exposes them to anonymous web visitors via `google.script.run`.
+
+1. In the Apps Script editor, create a temporary file or paste this temporary wrapper at the bottom of `Code.gs`:
+   ```javascript
+   function runOneTimeBootstrap() {
+     setupInfrastructure_();
+     setAdminCredentials_('piyushadmin', 'ReplaceWithStrongPassphrase2026!');
+   }
+
+   function runAllVerificationTests() {
+     runPhase2SmokeTest_();
+     runPhase3AuthTests_();
+     runPhase8SecurityTestSuite_();
+   }
+   ```
+2. Select **`runOneTimeBootstrap`** from the editor toolbar dropdown and click **Run**.
    - Approve the Google OAuth permissions prompt for your own account (guests will **never** see this or need Google accounts).
    - Verify in your Google Drive that the private folder `ANNIVERSARY_GALLERY/` was created containing:
      - `ORIGINAL_PHOTOS/`, `THUMBNAILS/`, `MEDIUM_IMAGES/`, `ADMIN_EXPORTS/`, and `SILVER_JUBILEE_GALLERY_DB`.
-2. Open `Config.gs` temporarily or run a one-liner in a temporary function to set your Admin password:
-   ```javascript
-   function initAdminOnce() {
-     setAdminCredentials('piyushadmin', 'ReplaceWithStrongPassphrase2026!');
-   }
-   ```
-   Run **`initAdminOnce`**, then delete `initAdminOnce` so your password never sits in code.
-3. Run the automated verification suites from the toolbar dropdown:
-   - **`runPhase2SmokeTest`** — Verifies private Drive upload, strict `PRIVATE` sharing, and Base64 retrieval.
-   - **`runPhase3AuthTests`** — Verifies CSV guest import, mobile normalization, hashing, deactivation, and logout.
-   - **`runPhase8SecurityTestSuite`** — Runs all **18 automated security, magic-byte, permission, and privacy assertions**. Confirm `allPassed: true` in Execution Log.
+3. Select **`runAllVerificationTests`** and click **Run**.
+   - Confirm **`allPassed: true`** across all **22 automated security, magic-byte, MIME-sanitization, durable-logout, permission, and privacy assertions** in the Execution Log.
+4. **IMPORTANT:** Delete `runOneTimeBootstrap` and `runAllVerificationTests` completely before deploying so your admin passphrase never sits in code and no setup/test function is exposed on the Web App RPC surface.
 
 ---
 

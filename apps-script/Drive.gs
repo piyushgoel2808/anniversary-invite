@@ -20,27 +20,43 @@ function savePrivateBlob_(folderId, blob, filename) {
   return file.getId();
 }
 
+function mimeToExtension_(mime) {
+  if (mime === 'image/webp') return '.webp';
+  if (mime === 'image/png') return '.png';
+  return '.jpg';
+}
+
 /**
  * Decodes a Base64 string (with or without data URL prefix), validates image magic bytes,
  * and stores it privately in the target Drive folder.
+ * Returns a verified dataUrl constructed strictly from magic-byte-verified MIME type
+ * (never preserving an untrusted client-supplied data: prefix).
  */
-function savePrivateBase64Image_(folderId, base64Input, declaredMimeType, filename) {
+function savePrivateBase64Image_(folderId, base64Input, declaredMimeType, filenameBase) {
   if (!base64Input || typeof base64Input !== 'string') {
     throw new Error('INVALID_IMAGE_DATA: Empty image payload.');
   }
-  var stripped = base64Input;
+  var stripped = base64Input.trim();
   var commaIdx = stripped.indexOf(',');
   if (commaIdx !== -1 && stripped.substring(0, commaIdx).indexOf('base64') !== -1) {
-    stripped = stripped.substring(commaIdx + 1);
+    stripped = stripped.substring(commaIdx + 1).trim();
   }
   var bytes = Utilities.base64Decode(stripped);
   var detectedMime = validateImageMagicBytes_(bytes, declaredMimeType);
-  var blob = Utilities.newBlob(bytes, detectedMime, sanitizeFilename_(filename));
-  var fileId = savePrivateBlob_(folderId, blob, filename);
+  var ext = mimeToExtension_(detectedMime);
+  var finalName = sanitizeFilename_(filenameBase || 'image');
+  if (!/\.(webp|jpg|jpeg|png)$/i.test(finalName)) {
+    finalName += ext;
+  } else {
+    finalName = finalName.replace(/\.(webp|jpg|jpeg|png)$/i, ext);
+  }
+  var blob = Utilities.newBlob(bytes, detectedMime, finalName);
+  var fileId = savePrivateBlob_(folderId, blob, finalName);
   return {
     fileId: fileId,
     mimeType: detectedMime,
-    sizeBytes: bytes.length
+    sizeBytes: bytes.length,
+    dataUrl: 'data:' + detectedMime + ';base64,' + stripped
   };
 }
 
@@ -66,16 +82,24 @@ function readPrivateImageAsDataUrl_(fileId, fallbackMimeType) {
 
 /**
  * Moves a private Drive file to trash (used for atomic upload rollback or admin deletion).
- * Swallows missing-file errors safely during cleanup.
+ * Returns true if trashed OR if the file is already missing/trashed; returns false on
+ * operational Drive errors so callers can retry deletion instead of silently succeeding.
  */
 function trashPrivateFile_(fileId) {
-  if (!fileId) return false;
+  if (!fileId) return true;
   try {
     var file = DriveApp.getFileById(fileId);
-    file.setTrashed(true);
+    if (!file.isTrashed()) {
+      file.setTrashed(true);
+    }
     return true;
   } catch (e) {
-    Logger.log('trashPrivateFile_ notice for ' + fileId + ': ' + e.message);
+    var msg = String(e && e.message ? e.message : e);
+    if (/no item with the given id|not found|does not exist/i.test(msg)) {
+      Logger.log('trashPrivateFile_ already missing for ' + fileId + ': ' + msg);
+      return true;
+    }
+    Logger.log('trashPrivateFile_ operational error for ' + fileId + ': ' + msg);
     return false;
   }
 }

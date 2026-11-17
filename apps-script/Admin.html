@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Panel — Silver Jubilee Memories Gallery</title>
-  <?!= include('Styles'); ?>
+  <?!= include_('Styles'); ?>
 </head>
 <body>
 
@@ -54,6 +54,12 @@
         <div class="stat-card"><div class="stat-value" id="st-storage">0 MB</div><div class="stat-label">Originals Stored</div></div>
       </div>
 
+      <!-- Recent Uploads Feed -->
+      <div class="admin-panel-card" id="recent-uploads-card">
+        <h3 style="color:var(--royal-blue);margin-bottom:8px;">Recent Uploads</h3>
+        <div id="adm-recent-list" style="font-size:0.86rem;color:var(--text-muted);">Loading recent activity...</div>
+      </div>
+
       <!-- Tabs -->
       <div class="tabs-bar">
         <button type="button" class="btn btn-secondary btn-sm tab-btn active" data-tab="photos">Photo Moderation</button>
@@ -86,6 +92,13 @@
               </thead>
               <tbody id="adm-photos-tbody"></tbody>
             </table>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px;flex-wrap:wrap;">
+            <span id="adm-photo-page-info" style="font-size:0.85rem;color:var(--text-muted);">Page 1</span>
+            <div style="display:flex;gap:8px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-photo-prev" disabled>Previous</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-photo-next" disabled>Next</button>
+            </div>
           </div>
         </div>
       </section>
@@ -136,16 +149,43 @@
     'use strict';
     var ADMIN_TOKEN_KEY = 'sj_admin_session_token';
     var adminToken = sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
+    var photoPage = 1;
+    var photoReqGen = 0;
+    var PHOTO_PAGE_SIZE = 20;
 
     var loginView = document.getElementById('admin-login-view');
     var appView = document.getElementById('admin-app-view');
     var loginErr = document.getElementById('adm-login-error');
     var toastEl = document.getElementById('toast');
+    var toastTimer = null;
 
     function showToast(msg, isError) {
       toastEl.textContent = msg;
       toastEl.className = 'toast' + (isError ? ' error' : '');
-      setTimeout(function () { toastEl.classList.add('hidden'); }, 3500);
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.add('hidden'); }, 3500);
+    }
+
+    function handleAdminAuthError(errMsg) {
+      if (errMsg && (errMsg.indexOf('UNAUTHORIZED') !== -1 || errMsg.indexOf('FORBIDDEN') !== -1)) {
+        exitAdmin();
+        showToast('Admin session expired. Please sign in again.', true);
+        return true;
+      }
+      return false;
+    }
+
+    function dataUrlToBlob(dataUrl, fallbackMime) {
+      var parts = String(dataUrl || '').split(',');
+      var mimeMatch = parts[0] && parts[0].match(/data:([^;]+);base64/i);
+      var mime = (mimeMatch && mimeMatch[1]) || fallbackMime || 'application/octet-stream';
+      var bin = atob(parts[1] || '');
+      var len = bin.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) {
+        bytes[i] = bin.charCodeAt(i);
+      }
+      return new Blob([bytes], { type: mime });
     }
 
     function fmtSize(bytes) {
@@ -164,7 +204,12 @@
 
     function exitAdmin() {
       adminToken = '';
+      photoPage = 1;
+      photoReqGen++;
       sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+      document.getElementById('adm-photos-tbody').innerHTML = '';
+      document.getElementById('adm-guests-tbody').innerHTML = '';
+      document.getElementById('adm-recent-list').textContent = '';
       appView.classList.add('hidden');
       loginView.classList.remove('hidden');
     }
@@ -216,152 +261,269 @@
     });
 
     function loadDashboard() {
-      google.script.run.withSuccessHandler(function (res) {
-        if (!res || !res.ok) return;
-        document.getElementById('st-guests').textContent = res.stats.totalGuests + ' (' + res.stats.activeGuests + ')';
-        document.getElementById('st-photos').textContent = String(res.stats.activePhotos);
-        document.getElementById('st-hidden').textContent = String(res.stats.hiddenPhotos);
-        document.getElementById('st-storage').textContent = fmtSize(res.stats.totalOriginalBytes);
-      }).adminGetDashboard(adminToken);
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (!res || !res.ok) {
+            handleAdminAuthError(res && res.error);
+            return;
+          }
+          document.getElementById('st-guests').textContent = res.stats.totalGuests + ' (' + res.stats.activeGuests + ')';
+          document.getElementById('st-photos').textContent = String(res.stats.activePhotos);
+          document.getElementById('st-hidden').textContent = String(res.stats.hiddenPhotos);
+          document.getElementById('st-storage').textContent = fmtSize(res.stats.totalOriginalBytes);
+
+          var recentEl = document.getElementById('adm-recent-list');
+          recentEl.innerHTML = '';
+          if (!res.recentUploads || res.recentUploads.length === 0) {
+            recentEl.textContent = 'No photographs uploaded yet.';
+          } else {
+            var ul = document.createElement('ul');
+            ul.style.listStyle = 'none';
+            ul.style.display = 'flex';
+            ul.style.flexDirection = 'column';
+            ul.style.gap = '6px';
+            res.recentUploads.slice(0, 6).forEach(function (item) {
+              var li = document.createElement('li');
+              var ts = item.upload_timestamp ? new Date(item.upload_timestamp).toLocaleString('en-IN') : '';
+              li.textContent = item.guest_name + ' uploaded ' + item.original_filename + ' (' + fmtSize(item.file_size) + ') — ' + ts + ' [' + item.status + ']';
+              ul.appendChild(li);
+            });
+            recentEl.appendChild(ul);
+          }
+        })
+        .withFailureHandler(function () {
+          showToast('Could not load dashboard metrics.', true);
+        })
+        .adminGetDashboard(adminToken);
     }
 
     function loadGuests() {
       var q = document.getElementById('guest-search').value.trim();
-      google.script.run.withSuccessHandler(function (res) {
-        if (!res || !res.ok) return;
-        var tbody = document.getElementById('adm-guests-tbody');
-        tbody.innerHTML = '';
-        res.guests.forEach(function (g) {
-          var tr = document.createElement('tr');
-          var td1 = document.createElement('td'); td1.textContent = g.guest_name;
-          var td2 = document.createElement('td'); td2.textContent = g.username;
-          var td3 = document.createElement('td');
-          var stBadge = document.createElement('span');
-          stBadge.className = 'badge ' + (g.status === 'active' ? 'badge-active' : 'badge-inactive');
-          stBadge.textContent = g.status;
-          td3.appendChild(stBadge);
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (!res || !res.ok) {
+            if (!handleAdminAuthError(res && res.error)) {
+              showToast((res && res.error) || 'Failed to load guests.', true);
+            }
+            return;
+          }
+          var tbody = document.getElementById('adm-guests-tbody');
+          tbody.innerHTML = '';
+          res.guests.forEach(function (g) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); td1.textContent = g.guest_name;
+            var td2 = document.createElement('td'); td2.textContent = g.username;
+            var td3 = document.createElement('td');
+            var stBadge = document.createElement('span');
+            stBadge.className = 'badge ' + (g.status === 'active' ? 'badge-active' : 'badge-inactive');
+            stBadge.textContent = g.status;
+            td3.appendChild(stBadge);
 
-          var td4 = document.createElement('td');
-          td4.textContent = g.upload_permission ? 'Enabled' : 'Disabled';
+            var td4 = document.createElement('td');
+            td4.textContent = g.upload_permission ? 'Enabled' : 'Disabled';
 
-          var td5 = document.createElement('td');
-          var toggleStatus = document.createElement('button');
-          toggleStatus.className = 'btn btn-secondary btn-sm';
-          toggleStatus.textContent = g.status === 'active' ? 'Deactivate' : 'Activate';
-          toggleStatus.addEventListener('click', function () {
-            var nextSt = g.status === 'active' ? 'inactive' : 'active';
-            google.script.run.withSuccessHandler(function (r) {
-              if (r && r.ok) { showToast('Guest updated.'); loadGuests(); loadDashboard(); }
-            }).adminUpdateGuest(adminToken, g.guest_id, nextSt, g.upload_permission);
+            var td5 = document.createElement('td');
+            var toggleStatus = document.createElement('button');
+            toggleStatus.className = 'btn btn-secondary btn-sm';
+            toggleStatus.textContent = g.status === 'active' ? 'Deactivate' : 'Activate';
+            toggleStatus.addEventListener('click', function () {
+              var nextSt = g.status === 'active' ? 'inactive' : 'active';
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  if (r && r.ok) { showToast('Guest updated.'); loadGuests(); loadDashboard(); }
+                  else if (!handleAdminAuthError(r && r.error)) { showToast((r && r.error) || 'Update failed.', true); }
+                })
+                .withFailureHandler(function () { showToast('Network error updating guest.', true); })
+                .adminUpdateGuest(adminToken, g.guest_id, nextSt, null);
+            });
+
+            var toggleUp = document.createElement('button');
+            toggleUp.className = 'btn btn-secondary btn-sm';
+            toggleUp.style.marginLeft = '6px';
+            toggleUp.textContent = g.upload_permission ? 'Revoke Upload' : 'Allow Upload';
+            toggleUp.addEventListener('click', function () {
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  if (r && r.ok) { showToast('Upload permission updated.'); loadGuests(); }
+                  else if (!handleAdminAuthError(r && r.error)) { showToast((r && r.error) || 'Update failed.', true); }
+                })
+                .withFailureHandler(function () { showToast('Network error updating permission.', true); })
+                .adminUpdateGuest(adminToken, g.guest_id, null, !g.upload_permission);
+            });
+
+            td5.appendChild(toggleStatus);
+            td5.appendChild(toggleUp);
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+            tbody.appendChild(tr);
           });
-
-          var toggleUp = document.createElement('button');
-          toggleUp.className = 'btn btn-secondary btn-sm';
-          toggleUp.style.marginLeft = '6px';
-          toggleUp.textContent = g.upload_permission ? 'Revoke Upload' : 'Allow Upload';
-          toggleUp.addEventListener('click', function () {
-            google.script.run.withSuccessHandler(function (r) {
-              if (r && r.ok) { showToast('Upload permission updated.'); loadGuests(); }
-            }).adminUpdateGuest(adminToken, g.guest_id, g.status, !g.upload_permission);
-          });
-
-          td5.appendChild(toggleStatus);
-          td5.appendChild(toggleUp);
-          tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
-          tbody.appendChild(tr);
-        });
-      }).adminListGuests(adminToken, q);
+        })
+        .withFailureHandler(function () {
+          showToast('Network error loading guest list.', true);
+        })
+        .adminListGuests(adminToken, q);
     }
 
     function loadPhotos() {
       var q = document.getElementById('photo-search').value.trim();
       var sf = document.getElementById('photo-status-filter').value;
-      google.script.run.withSuccessHandler(function (res) {
-        if (!res || !res.ok) return;
-        var tbody = document.getElementById('adm-photos-tbody');
-        tbody.innerHTML = '';
-        res.photos.forEach(function (p) {
-          var tr = document.createElement('tr');
+      var gen = ++photoReqGen;
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (gen !== photoReqGen) return;
+          if (!res || !res.ok) {
+            if (!handleAdminAuthError(res && res.error)) {
+              showToast((res && res.error) || 'Failed to load photos.', true);
+            }
+            return;
+          }
+          var totalPages = Math.max(1, Math.ceil((res.totalCount || 0) / PHOTO_PAGE_SIZE));
+          if (res.page > totalPages) {
+            photoPage = totalPages;
+            loadPhotos();
+            return;
+          }
+          photoPage = res.page;
+          document.getElementById('adm-photo-page-info').textContent =
+            'Page ' + res.page + ' of ' + totalPages + ' (' + res.totalCount + ' total)';
+          document.getElementById('btn-photo-prev').disabled = res.page <= 1;
+          document.getElementById('btn-photo-next').disabled = !res.hasMore;
 
-          var tdPrev = document.createElement('td');
-          var prevBtn = document.createElement('button');
-          prevBtn.className = 'btn btn-secondary btn-sm';
-          prevBtn.textContent = 'Preview';
-          prevBtn.addEventListener('click', function () {
-            prevBtn.disabled = true;
-            google.script.run.withSuccessHandler(function (imgRes) {
-              if (imgRes && imgRes.ok) {
-                var img = document.createElement('img');
-                img.src = imgRes.dataUrl;
-                img.style.width = '64px'; img.style.borderRadius = '8px';
-                tdPrev.innerHTML = '';
-                tdPrev.appendChild(img);
-              }
-            }).adminGetPhotoVariant(adminToken, p.photo_id, 'thumbnail');
+          var tbody = document.getElementById('adm-photos-tbody');
+          tbody.innerHTML = '';
+          res.photos.forEach(function (p) {
+            var tr = document.createElement('tr');
+
+            var tdPrev = document.createElement('td');
+            var prevBtn = document.createElement('button');
+            prevBtn.className = 'btn btn-secondary btn-sm';
+            prevBtn.textContent = 'Preview';
+            prevBtn.addEventListener('click', function () {
+              prevBtn.disabled = true;
+              google.script.run
+                .withSuccessHandler(function (imgRes) {
+                  if (imgRes && imgRes.ok) {
+                    var img = document.createElement('img');
+                    img.src = imgRes.dataUrl;
+                    img.style.width = '64px'; img.style.borderRadius = '8px';
+                    tdPrev.innerHTML = '';
+                    tdPrev.appendChild(img);
+                  } else {
+                    prevBtn.disabled = false;
+                    if (!handleAdminAuthError(imgRes && imgRes.error)) {
+                      showToast((imgRes && imgRes.error) || 'Preview failed.', true);
+                    }
+                  }
+                })
+                .withFailureHandler(function () {
+                  prevBtn.disabled = false;
+                  showToast('Network error loading preview.', true);
+                })
+                .adminGetPhotoVariant(adminToken, p.photo_id, 'thumbnail');
+            });
+            tdPrev.appendChild(prevBtn);
+
+            var tdGuest = document.createElement('td');
+            tdGuest.textContent = p.guest_name + ' (' + p.username + ')';
+
+            var tdFile = document.createElement('td');
+            tdFile.textContent = p.original_filename + ' (' + fmtSize(p.file_size) + ')';
+
+            var tdTime = document.createElement('td');
+            tdTime.textContent = p.upload_timestamp ? new Date(p.upload_timestamp).toLocaleString('en-IN') : '';
+
+            var tdStat = document.createElement('td');
+            var b = document.createElement('span');
+            b.className = 'badge ' + (p.status === 'active' ? 'badge-active' : 'badge-inactive');
+            b.textContent = p.status;
+            tdStat.appendChild(b);
+
+            var tdAct = document.createElement('td');
+            var dlBtn = document.createElement('button');
+            dlBtn.className = 'btn btn-secondary btn-sm';
+            dlBtn.textContent = 'Original';
+            dlBtn.addEventListener('click', function () {
+              dlBtn.disabled = true;
+              showToast('Preparing original download...');
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  dlBtn.disabled = false;
+                  if (!r || !r.ok) {
+                    if (!handleAdminAuthError(r && r.error)) {
+                      showToast((r && r.error) || 'Download failed', true);
+                    }
+                    return;
+                  }
+                  var blob = dataUrlToBlob(r.dataUrl, r.mimeType);
+                  var objUrl = URL.createObjectURL(blob);
+                  var a = document.createElement('a');
+                  a.href = objUrl;
+                  a.download = r.filename || (p.photo_id + '.jpg');
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  setTimeout(function () { URL.revokeObjectURL(objUrl); }, 4000);
+                })
+                .withFailureHandler(function () {
+                  dlBtn.disabled = false;
+                  showToast('Network error downloading original.', true);
+                })
+                .adminGetPhotoVariant(adminToken, p.photo_id, 'original');
+            });
+
+            var hideBtn = document.createElement('button');
+            hideBtn.className = 'btn btn-secondary btn-sm';
+            hideBtn.style.marginLeft = '4px';
+            hideBtn.textContent = p.status === 'active' ? 'Hide' : 'Restore';
+            hideBtn.addEventListener('click', function () {
+              var act = p.status === 'active' ? 'hide' : 'restore';
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  if (r && r.ok) { showToast('Photo updated.'); loadPhotos(); loadDashboard(); }
+                  else if (!handleAdminAuthError(r && r.error)) { showToast((r && r.error) || 'Action failed.', true); }
+                })
+                .withFailureHandler(function () { showToast('Network error updating photo.', true); })
+                .adminModeratePhoto(adminToken, p.photo_id, act);
+            });
+
+            var delBtn = document.createElement('button');
+            delBtn.className = 'btn btn-danger btn-sm';
+            delBtn.style.marginLeft = '4px';
+            delBtn.textContent = 'Delete';
+            delBtn.addEventListener('click', function () {
+              if (!confirm('Permanently delete this photograph from Drive and the gallery?')) return;
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  if (r && r.ok) { showToast('Photo deleted.'); loadPhotos(); loadDashboard(); }
+                  else if (!handleAdminAuthError(r && r.error)) { showToast((r && r.error) || 'Delete failed.', true); }
+                })
+                .withFailureHandler(function () { showToast('Network error deleting photo.', true); })
+                .adminModeratePhoto(adminToken, p.photo_id, 'delete');
+            });
+
+            tdAct.appendChild(dlBtn); tdAct.appendChild(hideBtn); tdAct.appendChild(delBtn);
+            tr.appendChild(tdPrev); tr.appendChild(tdGuest); tr.appendChild(tdFile);
+            tr.appendChild(tdTime); tr.appendChild(tdStat); tr.appendChild(tdAct);
+            tbody.appendChild(tr);
           });
-          tdPrev.appendChild(prevBtn);
-
-          var tdGuest = document.createElement('td');
-          tdGuest.textContent = p.guest_name + ' (' + p.username + ')';
-
-          var tdFile = document.createElement('td');
-          tdFile.textContent = p.original_filename + ' (' + fmtSize(p.file_size) + ')';
-
-          var tdTime = document.createElement('td');
-          tdTime.textContent = p.upload_timestamp ? new Date(p.upload_timestamp).toLocaleString('en-IN') : '';
-
-          var tdStat = document.createElement('td');
-          var b = document.createElement('span');
-          b.className = 'badge ' + (p.status === 'active' ? 'badge-active' : 'badge-inactive');
-          b.textContent = p.status;
-          tdStat.appendChild(b);
-
-          var tdAct = document.createElement('td');
-          var dlBtn = document.createElement('button');
-          dlBtn.className = 'btn btn-secondary btn-sm';
-          dlBtn.textContent = 'Original';
-          dlBtn.addEventListener('click', function () {
-            showToast('Preparing original download...');
-            google.script.run.withSuccessHandler(function (r) {
-              if (!r || !r.ok) { showToast((r && r.error) || 'Download failed', true); return; }
-              var a = document.createElement('a');
-              a.href = r.dataUrl;
-              a.download = r.filename || (p.photo_id + '.jpg');
-              a.click();
-            }).adminGetPhotoVariant(adminToken, p.photo_id, 'original');
-          });
-
-          var hideBtn = document.createElement('button');
-          hideBtn.className = 'btn btn-secondary btn-sm';
-          hideBtn.style.marginLeft = '4px';
-          hideBtn.textContent = p.status === 'active' ? 'Hide' : 'Restore';
-          hideBtn.addEventListener('click', function () {
-            var act = p.status === 'active' ? 'hide' : 'restore';
-            google.script.run.withSuccessHandler(function (r) {
-              if (r && r.ok) { showToast('Photo updated.'); loadPhotos(); loadDashboard(); }
-            }).adminModeratePhoto(adminToken, p.photo_id, act);
-          });
-
-          var delBtn = document.createElement('button');
-          delBtn.className = 'btn btn-danger btn-sm';
-          delBtn.style.marginLeft = '4px';
-          delBtn.textContent = 'Delete';
-          delBtn.addEventListener('click', function () {
-            if (!confirm('Permanently delete this photograph from Drive and the gallery?')) return;
-            google.script.run.withSuccessHandler(function (r) {
-              if (r && r.ok) { showToast('Photo deleted.'); loadPhotos(); loadDashboard(); }
-            }).adminModeratePhoto(adminToken, p.photo_id, 'delete');
-          });
-
-          tdAct.appendChild(dlBtn); tdAct.appendChild(hideBtn); tdAct.appendChild(delBtn);
-          tr.appendChild(tdPrev); tr.appendChild(tdGuest); tr.appendChild(tdFile);
-          tr.appendChild(tdTime); tr.appendChild(tdStat); tr.appendChild(tdAct);
-          tbody.appendChild(tr);
-        });
-      }).adminListPhotos(adminToken, q, sf, 1, 30);
+        })
+        .withFailureHandler(function () {
+          if (gen !== photoReqGen) return;
+          showToast('Network error loading photos.', true);
+        })
+        .adminListPhotos(adminToken, q, sf, photoPage, PHOTO_PAGE_SIZE);
     }
 
-    document.getElementById('btn-photo-search').addEventListener('click', loadPhotos);
+    document.getElementById('btn-photo-search').addEventListener('click', function () {
+      photoPage = 1;
+      loadPhotos();
+    });
+    document.getElementById('btn-photo-prev').addEventListener('click', function () {
+      if (photoPage > 1) { photoPage--; loadPhotos(); }
+    });
+    document.getElementById('btn-photo-next').addEventListener('click', function () {
+      photoPage++;
+      loadPhotos();
+    });
     document.getElementById('btn-guest-search').addEventListener('click', loadGuests);
 
     document.getElementById('csv-file-input').addEventListener('change', function (e) {
@@ -377,32 +539,59 @@
       var resEl = document.getElementById('csv-import-result');
       if (!csv) { resEl.textContent = 'Paste or choose a CSV file first.'; return; }
       resEl.textContent = 'Importing & hashing credentials...';
-      google.script.run.withSuccessHandler(function (r) {
-        if (!r || !r.ok) { resEl.textContent = (r && r.error) || 'Import failed.'; return; }
-        resEl.textContent = 'Imported ' + r.importedCount + ' guest(s). Skipped duplicates: ' + (r.skippedDuplicates || []).length + '. Errors: ' + (r.errors || []).length;
-        loadGuests();
-        loadDashboard();
-      }).adminImportGuestsCsv(adminToken, csv);
+      google.script.run
+        .withSuccessHandler(function (r) {
+          if (!r || !r.ok) {
+            if (!handleAdminAuthError(r && r.error)) {
+              resEl.textContent = (r && r.error) || 'Import failed.';
+            }
+            return;
+          }
+          resEl.textContent = 'Imported ' + r.importedCount + ' guest(s). Skipped duplicates: ' + (r.skippedDuplicates || []).length + '. Errors: ' + (r.errors || []).length;
+          loadGuests();
+          loadDashboard();
+        })
+        .withFailureHandler(function () {
+          resEl.textContent = 'Network error importing CSV. Please retry.';
+        })
+        .adminImportGuestsCsv(adminToken, csv);
     });
 
     document.getElementById('btn-adm-export').addEventListener('click', function () {
       showToast('Exporting metadata to Drive ADMIN_EXPORTS/...');
-      google.script.run.withSuccessHandler(function (r) {
-        if (!r || !r.ok) { showToast((r && r.error) || 'Export failed', true); return; }
-        var blob = new Blob([r.csvText], { type: 'text/csv;charset=utf-8;' });
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = r.filename;
-        a.click();
-        showToast('Exported ' + r.rowCount + ' records (copy saved in Drive ADMIN_EXPORTS/).');
-      }).adminExportMetadataCsv(adminToken);
+      google.script.run
+        .withSuccessHandler(function (r) {
+          if (!r || !r.ok) {
+            if (!handleAdminAuthError(r && r.error)) {
+              showToast((r && r.error) || 'Export failed', true);
+            }
+            return;
+          }
+          var blob = new Blob([r.csvText], { type: 'text/csv;charset=utf-8;' });
+          var objUrl = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = objUrl;
+          a.download = r.filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(objUrl); }, 4000);
+          showToast('Exported ' + r.rowCount + ' records (copy saved in Drive ADMIN_EXPORTS/).');
+        })
+        .withFailureHandler(function () {
+          showToast('Network error exporting metadata.', true);
+        })
+        .adminExportMetadataCsv(adminToken);
     });
 
     if (adminToken) {
-      google.script.run.withSuccessHandler(function (res) {
-        if (res && res.ok) enterAdmin(res.adminUsername);
-        else exitAdmin();
-      }).adminCheckSession(adminToken);
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (res && res.ok) enterAdmin(res.adminUsername);
+          else exitAdmin();
+        })
+        .withFailureHandler(exitAdmin)
+        .adminCheckSession(adminToken);
     }
   })();
   </script>

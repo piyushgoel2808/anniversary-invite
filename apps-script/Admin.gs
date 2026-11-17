@@ -33,11 +33,11 @@ function adminLogin(rawUsername, rawPassword) {
   if (!storedUser || !storedSalt || !storedHash) {
     return {
       ok: false,
-      error: 'Admin account not configured yet. Run setAdminCredentials() in the Apps Script editor.'
+      error: 'Admin account not configured yet. Run setAdminCredentials_() in the Apps Script editor.'
     };
   }
 
-  var computed = hashCredential_(password, storedSalt);
+  var computed = hashCredential_(password, storedSalt, APP_CONFIG.LIMITS.ADMIN_HASH_ITERATIONS);
   var userMatch = constantTimeEquals_(username, storedUser);
   var passMatch = constantTimeEquals_(computed, storedHash);
 
@@ -261,13 +261,17 @@ function adminGetPhotoVariant(adminToken, photoId, variant) {
     }
 
     var v = String(variant || 'thumbnail').toLowerCase();
-    var targetFileId = photo.thumbnail_id;
+    var targetFileId;
     var fallbackMime = 'image/webp';
-    if (v === 'medium') {
+    if (v === 'thumbnail') {
+      targetFileId = photo.thumbnail_id;
+    } else if (v === 'medium') {
       targetFileId = photo.medium_image_id;
     } else if (v === 'original') {
       targetFileId = photo.drive_file_id;
       fallbackMime = photo.mime_type;
+    } else {
+      throw new Error('INVALID_VARIANT: Allowed variants are thumbnail, medium, and original.');
     }
 
     var result = readPrivateImageAsDataUrl_(targetFileId, fallbackMime);
@@ -304,15 +308,39 @@ function adminModeratePhoto(adminToken, photoId, action) {
         throw new Error('NOT_FOUND: Photo record not found.');
       }
 
-      var newStatus = cleanAction === 'hide' ? 'hidden' : (cleanAction === 'restore' ? 'active' : 'deleted');
-      if (cleanAction === 'delete') {
-        trashPrivateFile_(photo.drive_file_id);
-        trashPrivateFile_(photo.thumbnail_id);
-        trashPrivateFile_(photo.medium_image_id);
+      if (photo.status === 'deleted') {
+        if (cleanAction === 'delete') {
+          return { ok: true, photo_id: photo.photo_id, status: 'deleted' };
+        }
+        throw new Error('INVALID_STATE: Deleted photographs cannot be hidden or restored.');
+      }
+      if (photo.status === 'delete_failed' && cleanAction !== 'delete') {
+        throw new Error('INVALID_STATE: Partially deleted photographs must be deleted to completion.');
       }
 
+      var statusCol = APP_CONFIG.PHOTO_HEADERS.indexOf('status') + 1;
       var sheet = getPhotosSheet_();
-      sheet.getRange(photo.rowNumber, 13).setValue(newStatus);
+      var newStatus = cleanAction === 'hide' ? 'hidden' : (cleanAction === 'restore' ? 'active' : 'deleted');
+      if (cleanAction === 'delete') {
+        var origRemoved = trashPrivateFile_(photo.drive_file_id);
+        var thumbRemoved = trashPrivateFile_(photo.thumbnail_id);
+        var medRemoved = trashPrivateFile_(photo.medium_image_id);
+        if (!origRemoved || !thumbRemoved || !medRemoved) {
+          // Keep record in a retryable non-public state until all Drive files are confirmed removed
+          sheet.getRange(photo.rowNumber, statusCol).setValue('delete_failed');
+          SpreadsheetApp.flush();
+          invalidatePhotosCache_();
+          invalidateThumbnailCache_(photo.photo_id);
+          return {
+            ok: false,
+            photo_id: photo.photo_id,
+            status: 'delete_failed',
+            error: 'DELETE_INCOMPLETE: One or more Drive files could not be removed. Please retry Delete.'
+          };
+        }
+      }
+
+      sheet.getRange(photo.rowNumber, statusCol).setValue(newStatus);
       SpreadsheetApp.flush();
       invalidatePhotosCache_();
       invalidateThumbnailCache_(photo.photo_id);
@@ -337,6 +365,10 @@ function adminExportMetadataCsv(adminToken) {
 
     var esc = function (v) {
       var s = String(v === null || v === undefined ? '' : v);
+      // Mitigate CSV formula injection when opened in Excel/Sheets
+      if (/^[=+\-@\t\r]/.test(s)) {
+        s = "'" + s;
+      }
       if (s.indexOf(',') !== -1 || s.indexOf('"') !== -1 || s.indexOf('\n') !== -1) {
         return '"' + s.replace(/"/g, '""') + '"';
       }

@@ -9,10 +9,14 @@
 
 var CACHE_KEYS = {
   GUESTS_INDEX: 'v1_guests_index',
+  GUESTS_VER: 'v1_guests_ver',
   PHOTOS_INDEX: 'v1_photos_index',
   THUMB_PREFIX: 'v1_thumb_',
   REVOKED_PREFIX: 'v1_revoked_',
-  THROTTLE_PREFIX: 'v1_throttle_'
+  REVOKED_SHARD_PREFIX: 'v1_rev_sh_',
+  REVOKED_VER_PREFIX: 'v1_rev_ver_',
+  THROTTLE_PREFIX: 'v1_throttle_',
+  PROP_PREFIX: 'v1_prop_'
 };
 
 function cacheGetString_(key) {
@@ -79,7 +83,13 @@ function invalidateThumbnailCache_(photoId) {
   cacheRemove_(CACHE_KEYS.THUMB_PREFIX + photoId);
 }
 
+function getGuestsCacheVer_() {
+  return cacheGetString_(CACHE_KEYS.GUESTS_VER) || '0';
+}
+
 function invalidateGuestsCache_() {
+  // Bump monotonic version BEFORE removing index so concurrent readers cannot republish stale data
+  cachePutString_(CACHE_KEYS.GUESTS_VER, Utilities.getUuid(), 21600);
   cacheRemove_(CACHE_KEYS.GUESTS_INDEX);
 }
 

@@ -57,7 +57,7 @@ function generateOpaqueId_(prefix) {
  * Iterated HMAC-SHA-256 with server-side AUTH_PEPPER and per-user random salt.
  * Provides strong offline brute-force resistance for mobile-number credentials inside Apps Script.
  */
-function hashCredential_(normalizedSecret, salt) {
+function hashCredential_(normalizedSecret, salt, iterationsOverride) {
   var pepper = getRequiredProp_(APP_CONFIG.PROP_KEYS.AUTH_PEPPER);
   var key = pepper + ':' + salt;
   var current = Utilities.computeHmacSha256Signature(
@@ -65,7 +65,7 @@ function hashCredential_(normalizedSecret, salt) {
     key,
     Utilities.Charset.UTF_8
   );
-  var iterations = APP_CONFIG.LIMITS.HASH_ITERATIONS;
+  var iterations = Number(iterationsOverride) || APP_CONFIG.LIMITS.HASH_ITERATIONS;
   for (var i = 1; i < iterations; i++) {
     current = Utilities.computeHmacSha256Signature(
       Utilities.base64Encode(current),
@@ -141,14 +141,105 @@ function verifyToken_(token) {
   }
 }
 
+/**
+ * Maps a token jti deterministically to a bounded shard bucket (0..REVOKED_SHARD_COUNT-1)
+ * so every ScriptProperty value stays well beneath Apps Script's 9 KB per-property cap.
+ */
+function revokedShardForJti_(jti) {
+  var hash = 0;
+  var str = String(jti || '');
+  for (var i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % APP_CONFIG.LIMITS.REVOKED_SHARD_COUNT;
+}
+
+/**
+ * Durably revokes a session token for its full remaining lifetime (up to 12 hours).
+ * Persists to sharded ScriptProperties FIRST under ScriptLock, then bumps the shard
+ * cache version and publishes cache markers so:
+ * - A lock timeout never leaves a transient cache marker without durable persistence.
+ * - Concurrent readers can never overwrite a fresh revocation shard with stale data.
+ */
 function revokeToken_(jti, remainingSeconds) {
   if (!jti) return;
-  var ttl = Math.min(Math.max(Number(remainingSeconds) || 3600, 60), 21600);
-  cachePutString_(CACHE_KEYS.REVOKED_PREFIX + jti, '1', ttl);
+  var nowSec = Math.floor(Date.now() / 1000);
+  var ttlSec = Math.max(Number(remainingSeconds) || 3600, 60);
+  var expSec = nowSec + ttlSec;
+  var shard = revokedShardForJti_(jti);
+  var propKey = APP_CONFIG.PROP_KEYS.REVOKED_SHARD_PREFIX + shard;
+  var shardCacheKey = CACHE_KEYS.REVOKED_SHARD_PREFIX + shard;
+  var shardVerKey = CACHE_KEYS.REVOKED_VER_PREFIX + shard;
+
+  // 1. Persist durably FIRST under ScriptLock
+  var lock = LockService.getScriptLock();
+  var locked = lock.tryLock(10000);
+  if (!locked) {
+    throw new Error('LOCK_TIMEOUT: Could not persist logout revocation. Please retry.');
+  }
+  var serialized;
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var raw = props.getProperty(propKey);
+    var map = {};
+    if (raw) {
+      try {
+        map = JSON.parse(raw) || {};
+      } catch (e) {
+        map = {};
+      }
+    }
+    // Prune already-expired revocations so every shard stays compact
+    var pruned = {};
+    var keys = Object.keys(map);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (Number(map[k]) > nowSec) {
+        pruned[k] = Number(map[k]);
+      }
+    }
+    pruned[jti] = expSec;
+    serialized = JSON.stringify(pruned);
+    props.setProperty(propKey, serialized);
+    // Bump shard version BEFORE updating shard cache so concurrent readers cannot republish stale maps
+    cachePutString_(shardVerKey, Utilities.getUuid(), 21600);
+    cachePutString_(shardCacheKey, serialized, 300);
+  } finally {
+    lock.releaseLock();
+  }
+
+  // 2. Publish fast-path per-token cache marker only AFTER durable persistence succeeded
+  cachePutString_(CACHE_KEYS.REVOKED_PREFIX + jti, '1', Math.min(ttlSec, 21600));
 }
 
 function isTokenRevoked_(jti) {
-  return cacheGetString_(CACHE_KEYS.REVOKED_PREFIX + jti) === '1';
+  if (!jti) return false;
+  if (cacheGetString_(CACHE_KEYS.REVOKED_PREFIX + jti) === '1') {
+    return true;
+  }
+  var nowSec = Math.floor(Date.now() / 1000);
+  var shard = revokedShardForJti_(jti);
+  var shardCacheKey = CACHE_KEYS.REVOKED_SHARD_PREFIX + shard;
+  var shardVerKey = CACHE_KEYS.REVOKED_VER_PREFIX + shard;
+
+  var map = cacheGetJson_(shardCacheKey);
+  if (!map) {
+    var verBefore = cacheGetString_(shardVerKey) || '0';
+    // Propagate PropertiesService read failures (fail closed in verifyToken_) — never cache an error as empty
+    var raw = PropertiesService.getScriptProperties().getProperty(
+      APP_CONFIG.PROP_KEYS.REVOKED_SHARD_PREFIX + shard
+    );
+    map = raw ? (JSON.parse(raw) || {}) : {};
+    var verAfter = cacheGetString_(shardVerKey) || '0';
+    if (verBefore === verAfter) {
+      cachePutJson_(shardCacheKey, map, 300);
+    }
+  }
+  if (map && Number(map[jti]) > nowSec) {
+    cachePutString_(CACHE_KEYS.REVOKED_PREFIX + jti, '1', 3600);
+    return true;
+  }
+  return false;
 }
 
 /**
