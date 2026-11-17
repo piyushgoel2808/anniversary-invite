@@ -8,3 +8,7 @@ blessings.db
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Google Apps Script clasp local project/auth files
+.clasp.json
+.clasprc.json

@@ -19,7 +19,7 @@ Create each file below in the Apps Script editor and paste the matching file fro
 
 - **Manifest:** `appsscript.json`
 - **Script files (`.gs`):** `Code`, `Config`, `Security`, `Cache`, `Drive`, `Guests`, `Auth`, `Uploads`, `Photos`, `Admin`, `Tests`
-- **HTML files (`.html`):** `Index`, `Admin`, `Styles`, `Scripts`
+- **HTML files (`.html`):** `Index`, `AdminPage`, `Styles`, `Scripts`
 
 *(Remove any unused default code in `Code.gs` before pasting.)*
 

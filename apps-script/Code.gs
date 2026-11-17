@@ -5,11 +5,11 @@
 /**
  * Web App HTTP GET Entrypoint
  * - Default URL (/exec)            -> Guest Memories Gallery (Index.html)
- * - Admin URL   (/exec?page=admin) -> Isolated Admin Panel   (Admin.html)
+ * - Admin URL   (/exec?page=admin) -> Isolated Admin Panel   (AdminPage.html)
  */
 function doGet(e) {
   var page = (e && e.parameter && e.parameter.page) ? String(e.parameter.page).toLowerCase() : 'gallery';
-  var templateName = (page === 'admin') ? 'Admin' : 'Index';
+  var templateName = (page === 'admin') ? 'AdminPage' : 'Index';
 
   try {
     var template = HtmlService.createTemplateFromFile(templateName);
