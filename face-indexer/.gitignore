@@ -1,0 +1,37 @@
+# Python environment & build artifacts
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Downloaded ONNX model weights (reproducible via `uv run face-indexer download-models`)
+models/*.onnx
+
+# Private local data, photos, encrypted embeddings & generated reports (NEVER commit)
+data/
+reports/
+Photos-*/
+*.sqlite3
+*.db
+*.enc
+*.key
+*.heic
+*.HEIC
+*.jpg
+*.jpeg
+*.png
+*.MP4
+*.mp4
+credentials.json
+token.json
+
+# OS metadata
+.DS_Store

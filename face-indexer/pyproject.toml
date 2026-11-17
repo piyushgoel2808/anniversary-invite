@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "silver-jubilee-face-indexer"
+version = "0.1.0"
+description = "Local privacy-first Mac face detection & recognition prototype for Silver Jubilee Memories Gallery"
+readme = "README.md"
+requires-python = "==3.12.*"
+dependencies = [
+    "google-api-python-client>=2.202.0",
+    "google-auth-httplib2>=0.4.4",
+    "google-auth-oauthlib>=1.5.0",
+    "numpy==2.5.5",
+    "opencv-python-headless==4.14.0.94",
+    "pillow==12.3.0",
+    "pillow-heif==1.8.1",
+]
+
+[dependency-groups]
+dev = [
+    "mypy==1.20.2",
+    "pytest==9.2.0",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.5",
+]
+
+[project.scripts]
+face-indexer = "face_indexer.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/face_indexer"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = [
+    "cv2",
+    "cv2.*",
+    "pillow_heif",
+    "pillow_heif.*",
+    "googleapiclient.*",
+    "google_auth_oauthlib.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

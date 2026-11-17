@@ -196,3 +196,123 @@ function runPhase8SecurityTestSuite_() {
   }
   return summary;
 }
+
+/**
+ * FACE RECOGNITION SECURITY & ISOLATION VERIFICATION SUITE (Private — Editor only)
+ * Verifies:
+ * 1. Explicit consent is required before reference upload
+ * 2. Reference photos stored strictly PRIVATE in FACE_REFERENCES/<guest_id>/
+ * 3. Pending suggestions appear only in getMyPhotoSuggestions(), never in listMyPhotos()
+ * 4. Cross-guest isolation: Guest B cannot see, confirm, or reject Guest A's matches
+ * 5. Confirming moves suggestion into listMyPhotos()
+ * 6. Withdrawing consent trashes Drive refs, marks profile WITHDRAWN, and revokes matches
+ */
+function runFaceRecognitionSecurityTests_() {
+  var results = [];
+  function assert(name, condition, detail) {
+    results.push({ test: name, passed: Boolean(condition), detail: detail || '' });
+    Logger.log((condition ? 'PASS: ' : 'FAIL: ') + name + (detail ? ' -> ' + detail : ''));
+  }
+
+  var ts = Math.floor(Date.now() / 1000);
+  var userA = 'face_a_' + ts;
+  var userB = 'face_b_' + ts;
+  var csv = [
+    'guest_name,username,mobile,upload_permission',
+    'Face Tester A,' + userA + ',+91 90001-11111,true',
+    'Face Tester B,' + userB + ',+91 90002-22222,true'
+  ].join('\n');
+  importGuestsFromCsv_(csv);
+
+  var tokA = guestLogin(userA, '9000111111').token;
+  var tokB = guestLogin(userB, '9000222222').token;
+  var guestA = findGuestByUsername_(userA);
+  var guestB = findGuestByUsername_(userB);
+
+  var tinyPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
+  // Upload a test photo to PHOTO_DATABASE
+  var upRes = uploadGuestPhotoBase64({
+    sessionToken: tokA,
+    originalFilename: 'face_test_album.png',
+    mimeType: 'image/png',
+    originalBase64: tinyPng,
+    thumbBase64: tinyPng,
+    mediumBase64: tinyPng,
+    width: 1,
+    height: 1
+  });
+  var photoId = upRes.photo.photo_id;
+
+  // 1. Missing consent MUST fail
+  var noConsent = registerFaceProfile({
+    sessionToken: tokA,
+    consentGranted: false,
+    images: [{ filename: 'selfie.png', mimeType: 'image/png', base64: tinyPng }]
+  });
+  assert('F1. Missing consent rejected', !noConsent.ok && noConsent.error.indexOf('CONSENT_REQUIRED') !== -1);
+
+  // 2. Valid face registration with consent succeeds
+  var regOk = registerFaceProfile({
+    sessionToken: tokA,
+    consentGranted: true,
+    images: [{ filename: 'selfie.png', mimeType: 'image/png', base64: tinyPng }]
+  });
+  assert('F2. Valid registration stores reference privately & sets PENDING_PROCESSING', regOk.ok && regOk.status === 'PENDING_PROCESSING' && regOk.savedCount === 1);
+
+  // Simulate Mac indexer writing one PENDING suggestion for Guest A
+  var matchSheet = getFaceMatchesSheet_();
+  matchSheet.appendRow([photoId, guestA.guest_id, 0.72, 'PENDING', 'yunet_2023mar+sface_2021dec', '', '']);
+  SpreadsheetApp.flush();
+  invalidateGuestFaceCache_(guestA.guest_id);
+
+  // 3. Guest A sees suggestion in getMyPhotoSuggestions(), NOT in listMyPhotos()
+  var sugA = getMyPhotoSuggestions(tokA, 1, 12);
+  var myA1 = listMyPhotos(tokA, 1, 24);
+  assert('F3. PENDING suggestion visible in getMyPhotoSuggestions()', sugA.ok && sugA.totalCount === 1 && sugA.suggestions[0].photo_id === photoId);
+  assert('F4. PENDING suggestion NOT auto-published in listMyPhotos()', myA1.ok && myA1.totalCount === 0);
+
+  // 4. Cross-guest isolation: Guest B cannot see or confirm Guest A's suggestion
+  var sugB = getMyPhotoSuggestions(tokB, 1, 12);
+  var hijackConfirm = confirmPhotoSuggestion(photoId, tokB);
+  assert('F5. Guest B sees zero suggestions belonging to Guest A', sugB.ok && sugB.totalCount === 0);
+  assert('F6. Guest B cannot confirm Guest A suggestion', !hijackConfirm.ok && hijackConfirm.error.indexOf('NOT_FOUND') !== -1);
+
+  // 5. Guest A confirms suggestion -> moves to listMyPhotos()
+  var confA = confirmPhotoSuggestion(photoId, tokA);
+  var sugA2 = getMyPhotoSuggestions(tokA, 1, 12);
+  var myA2 = listMyPhotos(tokA, 1, 24);
+  assert('F7. Guest A confirms own suggestion', confA.ok && confA.status === 'CONFIRMED');
+  assert('F8. Confirmed suggestion leaves pending queue & enters My Photos', sugA2.totalCount === 0 && myA2.totalCount === 1 && myA2.photos[0].photo_id === photoId);
+
+  // 6. Consent withdrawal trashes Drive refs, revokes matches & clears My Photos
+  var wdRes = withdrawFaceConsent(tokA);
+  var myA3 = listMyPhotos(tokA, 1, 24);
+  var profAfter = getMyFaceProfileStatus(tokA);
+  assert('F9. Consent withdrawal succeeds & revokes matches', wdRes.ok && wdRes.status === 'WITHDRAWN' && wdRes.revokedMatches >= 1);
+  assert('F10. My Photos empty & profile WITHDRAWN after consent withdrawal', myA3.ok && myA3.totalCount === 0 && profAfter.profile.status === 'WITHDRAWN');
+
+  // Cleanup test photo & guests
+  var photoRec = loadPhotosIndex_(true).byId[photoId];
+  trashPrivateFile_(photoRec.drive_file_id);
+  trashPrivateFile_(photoRec.thumbnail_id);
+  trashPrivateFile_(photoRec.medium_image_id);
+  getPhotosSheet_().getRange(photoRec.rowNumber, APP_CONFIG.PHOTO_HEADERS.indexOf('status') + 1).setValue('deleted');
+  updateGuestFlags_(guestA.guest_id, { status: 'inactive' });
+  updateGuestFlags_(guestB.guest_id, { status: 'inactive' });
+  invalidatePhotosCache_();
+
+  var failed = results.filter(function (r) { return !r.passed; });
+  var summary = {
+    totalTests: results.length,
+    passedCount: results.length - failed.length,
+    failedCount: failed.length,
+    allPassed: failed.length === 0,
+    results: results
+  };
+  Logger.log('FACE RECOGNITION SECURITY REPORT:\n' + JSON.stringify(summary, null, 2));
+  if (!summary.allPassed) {
+    throw new Error('Face Recognition Security Tests had ' + failed.length + ' failure(s).');
+  }
+  return summary;
+}

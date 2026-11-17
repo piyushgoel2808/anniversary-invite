@@ -17,7 +17,11 @@ var CACHE_KEYS = {
   REVOKED_VER_PREFIX: 'v1_rev_ver_',
   THROTTLE_PREFIX: 'v1_throttle_',
   DOWNLOAD_THROTTLE_PREFIX: 'v1_dl_',
-  PROP_PREFIX: 'v1_prop_'
+  PROP_PREFIX: 'v1_prop_',
+  FACE_VER_PREFIX: 'v1_face_ver_',
+  FACE_MATCHES_PREFIX: 'MATCHES_',
+  FACE_SUGGESTIONS_PREFIX: 'SUGGESTIONS_',
+  FACE_PROFILE_PREFIX: 'v1_fprof_'
 };
 
 function cacheGetString_(key) {
@@ -96,4 +100,14 @@ function invalidateGuestsCache_() {
 
 function invalidatePhotosCache_() {
   cacheRemove_(CACHE_KEYS.PHOTOS_INDEX);
+}
+
+function getGuestFaceCacheVer_(guestId) {
+  return cacheGetString_(CACHE_KEYS.FACE_VER_PREFIX + guestId) || '0';
+}
+
+function invalidateGuestFaceCache_(guestId) {
+  if (!guestId) return;
+  cachePutString_(CACHE_KEYS.FACE_VER_PREFIX + guestId, Utilities.getUuid().substring(0, 12), 21600);
+  cacheRemove_(CACHE_KEYS.FACE_PROFILE_PREFIX + guestId);
 }

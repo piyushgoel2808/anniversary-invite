@@ -12,7 +12,8 @@
   var state = {
     token: sessionStorage.getItem(STORAGE_TOKEN_KEY) || '',
     guest: null,
-    photos: [],          // Ordered metadata list
+    activeTab: 'all',    // 'all' | 'my'
+    photos: [],          // Ordered metadata list for active masonry view
     photoMap: {},        // photo_id -> { meta, thumbUrl, mediumUrl, cardEl, imgEl, boxEl }
     page: 0,
     hasMore: false,
@@ -20,11 +21,22 @@
     isLoadingPage: false,
     columnCount: 2,
     lightboxIndex: -1,
+    lightboxList: [],    // Active list displayed in lightbox (masonry photos or suggestion preview)
     thumbQueue: [],
     activeThumbCalls: 0,
     uploadQueue: [],     // [{ id, file, previewUrl, status, progress, error }]
     isUploading: false,
-    isDownloadingOriginal: false
+    isDownloadingOriginal: false,
+    // Face recognition ("My Photos") state
+    faceProfile: null,
+    faceCounts: { confirmedCount: 0, pendingCount: 0 },
+    suggestions: [],
+    suggestionMap: {},   // photo_id -> { meta, cardEl, imgEl, mediaEl, thumbUrl, mediumUrl }
+    suggestionsPage: 0,
+    suggestionsHasMore: false,
+    isLoadingSuggestions: false,
+    faceRefFiles: [],    // [{ id, file, previewUrl }]
+    isSubmittingFace: false
   };
 
   // DOM References
@@ -41,6 +53,9 @@
   var countLabel = document.getElementById('gallery-count-label');
   var skeletonEl = document.getElementById('gallery-skeleton');
   var emptyEl = document.getElementById('gallery-empty');
+  var myEmptyEl = document.getElementById('my-photos-empty');
+  var myEmptyDesc = document.getElementById('my-photos-empty-desc');
+  var myEmptyFaceBtn = document.getElementById('btn-my-empty-face');
   var masonryEl = document.getElementById('masonry-grid');
   var loadMoreWrap = document.getElementById('load-more-wrap');
   var loadMoreBtn = document.getElementById('btn-load-more');
@@ -48,6 +63,32 @@
   var emptyUploadBtn = document.getElementById('btn-empty-upload');
   var logoutBtn = document.getElementById('btn-logout');
   var refreshBtn = document.getElementById('btn-refresh-gallery');
+
+  // Face / My Photos DOM References
+  var tabAllBtn = document.getElementById('tab-all-photos');
+  var tabMyBtn = document.getElementById('tab-my-photos');
+  var pendingBadgeEl = document.getElementById('my-photos-pending-badge');
+  var topbarFaceBtn = document.getElementById('btn-topbar-face');
+  var myPhotosPanel = document.getElementById('my-photos-panel');
+  var faceStatusPill = document.getElementById('face-status-pill');
+  var faceBannerDesc = document.getElementById('face-banner-desc');
+  var openFaceModalBtn = document.getElementById('btn-open-face-modal');
+  var withdrawFaceBtn = document.getElementById('btn-withdraw-face');
+  var suggestionsPanel = document.getElementById('suggestions-panel');
+  var suggestionsHeading = document.getElementById('suggestions-heading');
+  var suggestionsGrid = document.getElementById('suggestions-grid');
+  var suggestionsMoreWrap = document.getElementById('suggestions-more-wrap');
+  var loadMoreSuggestionsBtn = document.getElementById('btn-load-more-suggestions');
+
+  var faceModal = document.getElementById('face-modal');
+  var closeFaceModalBtn = document.getElementById('btn-close-face-modal');
+  var cancelFaceModalBtn = document.getElementById('btn-cancel-face-modal');
+  var faceDropzone = document.getElementById('face-dropzone');
+  var faceFilePicker = document.getElementById('face-file-picker');
+  var facePreviewStrip = document.getElementById('face-preview-strip');
+  var faceConsentCheckbox = document.getElementById('face-consent-checkbox');
+  var faceModalMsg = document.getElementById('face-modal-msg');
+  var submitFaceBtn = document.getElementById('btn-submit-face');
 
   var uploadModal = document.getElementById('upload-modal');
   var closeUploadBtn = document.getElementById('btn-close-upload');
@@ -111,6 +152,7 @@
 
   function enterGallery(guest) {
     state.guest = guest;
+    state.activeTab = 'all';
     loginView.classList.add('hidden');
     galleryView.classList.remove('hidden');
     welcomeLabel.textContent = 'Signed in as ' + guest.name;
@@ -121,7 +163,9 @@
       openUploadBtn.classList.remove('hidden');
       emptyUploadBtn.classList.remove('hidden');
     }
+    updateTabButtonsUI();
     resetAndLoadGallery();
+    loadFaceProfileStatus();
   }
 
   var galleryGen = 0;
@@ -170,19 +214,31 @@
     state.isLoadingPage = false;
     state.token = '';
     state.guest = null;
+    state.activeTab = 'all';
     state.photos = [];
     state.photoMap = {};
     state.thumbQueue = [];
     state.lightboxIndex = -1;
+    state.lightboxList = [];
+    state.faceProfile = null;
+    state.faceCounts = { confirmedCount: 0, pendingCount: 0 };
+    state.suggestions = [];
+    state.suggestionMap = {};
+    state.suggestionsPage = 0;
+    state.suggestionsHasMore = false;
+    state.isLoadingSuggestions = false;
+    clearFaceRefFiles();
     retriedBatchIds = {};
     clearUploadQueue();
     sessionStorage.removeItem(STORAGE_TOKEN_KEY);
     // Wipe private image data URLs from DOM immediately on logout
     masonryEl.innerHTML = '';
+    suggestionsGrid.innerHTML = '';
     lightboxImg.src = '';
     document.body.style.overflow = '';
     galleryView.classList.add('hidden');
     uploadModal.classList.add('hidden');
+    faceModal.classList.add('hidden');
     lightboxEl.classList.add('hidden');
     loginView.classList.remove('hidden');
     if (message) {
@@ -383,9 +439,17 @@
             }
             if (res && res.ok && res.items) {
               Object.keys(res.items).forEach(function (pid) {
+                var dataUrl = res.items[pid];
+                if (!dataUrl) return;
                 var entry = state.photoMap[pid];
-                if (entry && res.items[pid]) {
-                  applyThumbToEntry(entry, res.items[pid]);
+                if (entry) {
+                  applyThumbToEntry(entry, dataUrl);
+                }
+                var sugEntry = state.suggestionMap[pid];
+                if (sugEntry) {
+                  sugEntry.thumbUrl = dataUrl;
+                  sugEntry.imgEl.src = dataUrl;
+                  sugEntry.mediaEl.classList.add('loaded');
                 }
               });
             } else if (res && res.error) {
@@ -432,8 +496,18 @@
     buildMasonryColumns();
     masonryEl.classList.add('hidden');
     emptyEl.classList.add('hidden');
+    myEmptyEl.classList.add('hidden');
     loadMoreWrap.classList.add('hidden');
     skeletonEl.classList.remove('hidden');
+
+    if (state.activeTab === 'my') {
+      myPhotosPanel.classList.remove('hidden');
+      loadFaceProfileStatus();
+      resetAndLoadSuggestions();
+    } else {
+      myPhotosPanel.classList.add('hidden');
+    }
+
     loadNextPage();
   }
 
@@ -441,11 +515,12 @@
     if (state.isLoadingPage) return;
     state.isLoadingPage = true;
     var gen = galleryGen;
+    var isMyTab = state.activeTab === 'my';
     loadMoreBtn.disabled = true;
     loadMoreBtn.textContent = 'Loading...';
 
     var targetPage = state.page + 1;
-    google.script.run
+    var runner = google.script.run
       .withSuccessHandler(function (res) {
         if (gen !== galleryGen) return;
         state.isLoadingPage = false;
@@ -463,16 +538,27 @@
         state.page = res.page;
         state.totalCount = res.totalCount;
         state.hasMore = res.hasMore;
-        countLabel.textContent = res.totalCount + (res.totalCount === 1 ? ' Photograph' : ' Photographs');
+        if (isMyTab) {
+          countLabel.textContent = res.totalCount + (res.totalCount === 1 ? ' Confirmed Photograph of You' : ' Confirmed Photographs of You');
+        } else {
+          countLabel.textContent = res.totalCount + (res.totalCount === 1 ? ' Photograph' : ' Photographs');
+        }
 
         if (res.totalCount === 0) {
           masonryEl.classList.add('hidden');
-          emptyEl.classList.remove('hidden');
           loadMoreWrap.classList.add('hidden');
+          if (isMyTab) {
+            emptyEl.classList.add('hidden');
+            myEmptyEl.classList.remove('hidden');
+          } else {
+            myEmptyEl.classList.add('hidden');
+            emptyEl.classList.remove('hidden');
+          }
           return;
         }
 
         emptyEl.classList.add('hidden');
+        myEmptyEl.classList.add('hidden');
         masonryEl.classList.remove('hidden');
         (res.photos || []).forEach(function (meta) {
           appendPhotoToMasonry(meta, null);
@@ -492,8 +578,13 @@
         loadMoreBtn.disabled = false;
         loadMoreBtn.textContent = 'Load More Photographs';
         showToast('Network error loading gallery. Please refresh.', true);
-      })
-      .listGalleryPhotos(state.token, targetPage, PAGE_SIZE);
+      });
+
+    if (isMyTab) {
+      runner.listMyPhotos(state.token, targetPage, PAGE_SIZE);
+    } else {
+      runner.listGalleryPhotos(state.token, targetPage, PAGE_SIZE);
+    }
   }
 
   loadMoreBtn.addEventListener('click', loadNextPage);
@@ -537,33 +628,42 @@
   /* =====================================================================
      3. FULL-SCREEN LIGHTBOX (Medium WebP Variant, Swipe & Keyboard Nav)
      ===================================================================== */
-  function openLightboxByPhotoId(photoId) {
-    var idx = state.photos.findIndex(function (p) { return p.photo_id === photoId; });
+  function openLightboxForList(list, photoId) {
+    var items = list || [];
+    var idx = items.findIndex(function (p) { return p.photo_id === photoId; });
     if (idx === -1) return;
+    state.lightboxList = items;
     state.lightboxIndex = idx;
     lightboxEl.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     renderLightboxCurrent();
   }
 
+  function openLightboxByPhotoId(photoId) {
+    openLightboxForList(state.photos, photoId);
+  }
+
   function closeLightbox() {
     lightboxEl.classList.add('hidden');
     document.body.style.overflow = '';
     state.lightboxIndex = -1;
+    state.lightboxList = [];
   }
 
   function stepLightbox(delta) {
-    if (state.photos.length === 0) return;
-    state.lightboxIndex = (state.lightboxIndex + delta + state.photos.length) % state.photos.length;
+    var list = state.lightboxList || [];
+    if (list.length === 0) return;
+    state.lightboxIndex = (state.lightboxIndex + delta + list.length) % list.length;
     renderLightboxCurrent();
   }
 
   function renderLightboxCurrent() {
-    var meta = state.photos[state.lightboxIndex];
+    var list = state.lightboxList || [];
+    var meta = list[state.lightboxIndex];
     if (!meta) return;
-    var entry = state.photoMap[meta.photo_id];
+    var entry = state.photoMap[meta.photo_id] || state.suggestionMap[meta.photo_id];
 
-    lightboxCounter.textContent = (state.lightboxIndex + 1) + ' / ' + state.photos.length;
+    lightboxCounter.textContent = (state.lightboxIndex + 1) + ' / ' + list.length;
     lightboxAuthor.textContent = 'Shared by ' + meta.guest_name;
     lightboxDate.textContent = formatDate(meta.upload_timestamp);
 
@@ -585,7 +685,11 @@
           if (state.photoMap[activeId]) {
             state.photoMap[activeId].mediumUrl = res.dataUrl;
           }
-          var cur = state.photos[state.lightboxIndex];
+          if (state.suggestionMap[activeId]) {
+            state.suggestionMap[activeId].mediumUrl = res.dataUrl;
+          }
+          var curList = state.lightboxList || [];
+          var cur = curList[state.lightboxIndex];
           if (cur && cur.photo_id === activeId) {
             lightboxImg.src = res.dataUrl;
           }
@@ -608,7 +712,8 @@
   if (lightboxDownloadBtn) {
     lightboxDownloadBtn.addEventListener('click', function () {
       if (state.isDownloadingOriginal || !state.token) return;
-      var meta = state.photos[state.lightboxIndex];
+      var curList = state.lightboxList || [];
+      var meta = curList[state.lightboxIndex];
       if (!meta || !meta.photo_id) return;
 
       var dlGen = downloadSessionGen;
@@ -1003,6 +1108,554 @@
       }
     });
     processUploadQueueSequential();
+  });
+
+  /* =====================================================================
+     5. MY PHOTOS TAB, FACE PROFILE STATUS, SUGGESTION REVIEW & CONSENT MODAL
+     ===================================================================== */
+  function updateTabButtonsUI() {
+    var isMy = state.activeTab === 'my';
+    tabAllBtn.classList.toggle('active', !isMy);
+    tabAllBtn.setAttribute('aria-selected', String(!isMy));
+    tabMyBtn.classList.toggle('active', isMy);
+    tabMyBtn.setAttribute('aria-selected', String(isMy));
+  }
+
+  function switchTab(nextTab) {
+    if (state.activeTab === nextTab) return;
+    state.activeTab = nextTab;
+    updateTabButtonsUI();
+    resetAndLoadGallery();
+  }
+
+  tabAllBtn.addEventListener('click', function () { switchTab('all'); });
+  tabMyBtn.addEventListener('click', function () { switchTab('my'); });
+
+  function renderFaceProfileUI() {
+    var prof = state.faceProfile || { status: 'NOT_REGISTERED', consent: 'NONE' };
+    var counts = state.faceCounts || { confirmedCount: 0, pendingCount: 0 };
+    var st = String(prof.status || 'NOT_REGISTERED').toUpperCase();
+
+    // Update pending badge on My Photos tab
+    if (counts.pendingCount > 0) {
+      pendingBadgeEl.textContent = String(counts.pendingCount);
+      pendingBadgeEl.classList.remove('hidden');
+    } else {
+      pendingBadgeEl.classList.add('hidden');
+    }
+
+    if (st === 'ACTIVE') {
+      faceStatusPill.className = 'face-status-pill active';
+      faceStatusPill.textContent = 'Active';
+      faceBannerDesc.textContent =
+        counts.confirmedCount + ' confirmed photograph' + (counts.confirmedCount === 1 ? '' : 's') +
+        ' · ' + counts.pendingCount + ' waiting for your review.';
+      openFaceModalBtn.textContent = 'Update Face Photos';
+      topbarFaceBtn.textContent = 'Face Profile ✓';
+      withdrawFaceBtn.classList.remove('hidden');
+      myEmptyDesc.textContent = counts.pendingCount > 0
+        ? 'Confirm any of the suggested photographs above to add them to your personal album.'
+        : 'No confirmed photographs yet. As new anniversary photos are scanned, suggestions will appear here for your review.';
+      myEmptyFaceBtn.textContent = 'Update Face Photos';
+    } else if (st === 'PENDING_PROCESSING') {
+      faceStatusPill.className = 'face-status-pill pending';
+      faceStatusPill.textContent = 'Submitted · Awaiting Scan';
+      faceBannerDesc.textContent =
+        'Your reference photographs are saved privately. As soon as the family runs the next local face scan, suggested photos of you will appear here for your review.';
+      openFaceModalBtn.textContent = 'Add More Selfies';
+      topbarFaceBtn.textContent = 'Face Pending';
+      withdrawFaceBtn.classList.remove('hidden');
+      myEmptyDesc.textContent = 'Your face profile is queued for the next scan. Check back shortly to review your photo suggestions!';
+      myEmptyFaceBtn.textContent = 'Update Face Photos';
+    } else if (st === 'NEEDS_RETRY') {
+      faceStatusPill.className = 'face-status-pill retry';
+      faceStatusPill.textContent = 'Clearer Photo Needed';
+      faceBannerDesc.textContent =
+        'We could not clearly detect a single face in your previous reference photo(s). Please upload 2–4 well-lit solo selfies facing the camera.';
+      openFaceModalBtn.textContent = 'Upload Clearer Selfies';
+      topbarFaceBtn.textContent = 'Add My Face';
+      withdrawFaceBtn.classList.remove('hidden');
+      myEmptyDesc.textContent = 'Upload 2–4 clear solo photographs of yourself so we can find you in the album.';
+      myEmptyFaceBtn.textContent = 'Upload Clearer Selfies';
+    } else {
+      faceStatusPill.className = 'face-status-pill none';
+      faceStatusPill.textContent = (st === 'WITHDRAWN' || st === 'REVOKED') ? 'Removed' : 'Not Set Up';
+      faceBannerDesc.textContent =
+        'Upload 2–4 clear photographs of yourself to automatically find pictures you appear in across the shared Silver Jubilee album. You always review and approve every suggestion.';
+      openFaceModalBtn.textContent = 'Add My Face';
+      topbarFaceBtn.textContent = 'Add My Face';
+      withdrawFaceBtn.classList.add('hidden');
+      myEmptyDesc.textContent = 'Confirmed photographs of you will appear here. Add your face profile to get started!';
+      myEmptyFaceBtn.textContent = 'Add My Face';
+    }
+  }
+
+  function loadFaceProfileStatus() {
+    if (!state.token) return;
+    var gen = galleryGen;
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (gen !== galleryGen && !state.token) return;
+        if (res && res.ok) {
+          state.faceProfile = res.profile;
+          state.faceCounts = res.counts || { confirmedCount: 0, pendingCount: 0 };
+          renderFaceProfileUI();
+        }
+      })
+      .withFailureHandler(function () {
+        // Non-blocking background status check
+      })
+      .getMyFaceProfileStatus(state.token);
+  }
+
+  function resetAndLoadSuggestions() {
+    state.suggestions = [];
+    state.suggestionMap = {};
+    state.suggestionsPage = 0;
+    state.suggestionsHasMore = false;
+    state.isLoadingSuggestions = false;
+    suggestionsGrid.innerHTML = '';
+    suggestionsPanel.classList.add('hidden');
+    suggestionsMoreWrap.classList.add('hidden');
+    loadNextSuggestionsPage();
+  }
+
+  function createSuggestionCard(meta) {
+    var card = document.createElement('article');
+    card.className = 'suggestion-card';
+
+    var media = document.createElement('div');
+    media.className = 'suggestion-media';
+    media.title = 'Tap to inspect full photograph';
+
+    var img = document.createElement('img');
+    img.alt = 'Suggested photograph shared by ' + meta.guest_name;
+    img.loading = 'lazy';
+    media.appendChild(img);
+    media.addEventListener('click', function () {
+      openLightboxForList(state.suggestions, meta.photo_id);
+    });
+
+    var body = document.createElement('div');
+    body.className = 'suggestion-body';
+
+    var q = document.createElement('div');
+    q.className = 'suggestion-question';
+    q.textContent = 'Are you in this photo?';
+
+    var metaLine = document.createElement('div');
+    metaLine.className = 'suggestion-meta';
+    var pct = Math.round((Number(meta.confidence) || 0) * 100);
+    metaLine.textContent = 'Shared by ' + meta.guest_name + (pct > 0 ? (' · ' + pct + '% match') : '');
+
+    var actions = document.createElement('div');
+    actions.className = 'suggestion-actions';
+
+    var yesBtn = document.createElement('button');
+    yesBtn.type = 'button';
+    yesBtn.className = 'btn btn-primary btn-sm';
+    yesBtn.textContent = "Yes, that's me";
+
+    var noBtn = document.createElement('button');
+    noBtn.type = 'button';
+    noBtn.className = 'btn btn-secondary btn-sm';
+    noBtn.textContent = 'No, not me';
+
+    yesBtn.addEventListener('click', function () {
+      submitSuggestionReview(meta, 'CONFIRMED', yesBtn, noBtn);
+    });
+    noBtn.addEventListener('click', function () {
+      submitSuggestionReview(meta, 'REJECTED', yesBtn, noBtn);
+    });
+
+    actions.appendChild(yesBtn);
+    actions.appendChild(noBtn);
+    body.appendChild(q);
+    body.appendChild(metaLine);
+    body.appendChild(actions);
+    card.appendChild(media);
+    card.appendChild(body);
+
+    return { card: card, media: media, img: img };
+  }
+
+  function submitSuggestionReview(meta, decision, yesBtn, noBtn) {
+    if (!state.token) return;
+    yesBtn.disabled = true;
+    noBtn.disabled = true;
+    if (decision === 'CONFIRMED') {
+      yesBtn.textContent = 'Saving...';
+    } else {
+      noBtn.textContent = 'Saving...';
+    }
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (!res || !res.ok) {
+          yesBtn.disabled = false;
+          noBtn.disabled = false;
+          yesBtn.textContent = "Yes, that's me";
+          noBtn.textContent = 'No, not me';
+          if (!handleServerAuthError(res && res.error)) {
+            showToast((res && res.error) || 'Could not save your review.', true);
+          }
+          return;
+        }
+
+        var entry = state.suggestionMap[meta.photo_id];
+        var savedThumb = entry ? entry.thumbUrl : null;
+        if (entry && entry.cardEl && entry.cardEl.parentNode) {
+          entry.cardEl.parentNode.removeChild(entry.cardEl);
+        }
+        delete state.suggestionMap[meta.photo_id];
+        state.suggestions = state.suggestions.filter(function (s) { return s.photo_id !== meta.photo_id; });
+
+        state.faceCounts.pendingCount = Math.max(0, (state.faceCounts.pendingCount || 0) - 1);
+        if (decision === 'CONFIRMED') {
+          state.faceCounts.confirmedCount = (state.faceCounts.confirmedCount || 0) + 1;
+          showToast('Added to your My Photos album!');
+          // Immediately append to My Photos grid if we are on My Photos tab
+          if (state.activeTab === 'my') {
+            myEmptyEl.classList.add('hidden');
+            masonryEl.classList.remove('hidden');
+            appendPhotoToMasonry(meta, savedThumb);
+            if (!savedThumb) pumpThumbnailQueue();
+            state.totalCount = (state.totalCount || 0) + 1;
+            countLabel.textContent = state.totalCount + (state.totalCount === 1 ? ' Confirmed Photograph of You' : ' Confirmed Photographs of You');
+          }
+        } else {
+          showToast('Suggestion dismissed.');
+        }
+
+        if (state.suggestions.length === 0 && !state.suggestionsHasMore) {
+          suggestionsPanel.classList.add('hidden');
+        } else {
+          suggestionsHeading.textContent = 'Suggested for You (' + state.faceCounts.pendingCount + ' waiting)';
+        }
+        renderFaceProfileUI();
+      })
+      .withFailureHandler(function () {
+        yesBtn.disabled = false;
+        noBtn.disabled = false;
+        yesBtn.textContent = "Yes, that's me";
+        noBtn.textContent = 'No, not me';
+        showToast('Network error saving review. Please try again.', true);
+      })
+      .reviewPhotoSuggestion(meta.photo_id, decision, state.token);
+  }
+
+  function loadNextSuggestionsPage() {
+    if (state.isLoadingSuggestions || !state.token) return;
+    state.isLoadingSuggestions = true;
+    var gen = galleryGen;
+    var nextPage = state.suggestionsPage + 1;
+    loadMoreSuggestionsBtn.disabled = true;
+    loadMoreSuggestionsBtn.textContent = 'Loading...';
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (gen !== galleryGen) return;
+        state.isLoadingSuggestions = false;
+        loadMoreSuggestionsBtn.disabled = false;
+        loadMoreSuggestionsBtn.textContent = 'Load More Suggestions';
+
+        if (!res || !res.ok) {
+          handleServerAuthError(res && res.error);
+          return;
+        }
+
+        state.suggestionsPage = res.page;
+        state.suggestionsHasMore = res.hasMore;
+        state.faceCounts.pendingCount = res.totalCount;
+        renderFaceProfileUI();
+
+        if (res.totalCount === 0) {
+          suggestionsPanel.classList.add('hidden');
+          return;
+        }
+
+        suggestionsPanel.classList.remove('hidden');
+        suggestionsHeading.textContent = 'Suggested for You (' + res.totalCount + ' waiting)';
+
+        (res.suggestions || []).forEach(function (meta) {
+          if (state.suggestionMap[meta.photo_id]) return;
+          var ui = createSuggestionCard(meta);
+          var existingThumb = state.photoMap[meta.photo_id] ? state.photoMap[meta.photo_id].thumbUrl : null;
+          state.suggestionMap[meta.photo_id] = {
+            meta: meta,
+            cardEl: ui.card,
+            mediaEl: ui.media,
+            imgEl: ui.img,
+            thumbUrl: existingThumb,
+            mediumUrl: null
+          };
+          state.suggestions.push(meta);
+          suggestionsGrid.appendChild(ui.card);
+
+          if (existingThumb) {
+            ui.img.src = existingThumb;
+            ui.media.classList.add('loaded');
+          } else {
+            state.thumbQueue.push(meta.photo_id);
+          }
+        });
+
+        pumpThumbnailQueue();
+        if (state.suggestionsHasMore) {
+          suggestionsMoreWrap.classList.remove('hidden');
+        } else {
+          suggestionsMoreWrap.classList.add('hidden');
+        }
+      })
+      .withFailureHandler(function () {
+        if (gen !== galleryGen) return;
+        state.isLoadingSuggestions = false;
+        loadMoreSuggestionsBtn.disabled = false;
+        loadMoreSuggestionsBtn.textContent = 'Load More Suggestions';
+      })
+      .getMyPhotoSuggestions(state.token, nextPage, 12);
+  }
+
+  loadMoreSuggestionsBtn.addEventListener('click', loadNextSuggestionsPage);
+
+  /* --- Add My Face Modal --- */
+  function clearFaceRefFiles() {
+    (state.faceRefFiles || []).forEach(function (item) {
+      if (item && item.previewUrl) {
+        try { URL.revokeObjectURL(item.previewUrl); } catch (e) {}
+      }
+    });
+    state.faceRefFiles = [];
+    if (facePreviewStrip) facePreviewStrip.innerHTML = '';
+    if (faceConsentCheckbox) faceConsentCheckbox.checked = false;
+    if (faceModalMsg) faceModalMsg.textContent = '';
+    updateSubmitFaceButtonState();
+  }
+
+  function updateSubmitFaceButtonState() {
+    if (!submitFaceBtn) return;
+    var ready = !state.isSubmittingFace &&
+      state.faceRefFiles.length >= 1 &&
+      faceConsentCheckbox &&
+      faceConsentCheckbox.checked;
+    submitFaceBtn.disabled = !ready;
+    submitFaceBtn.textContent = state.isSubmittingFace
+      ? 'Submitting Privately...'
+      : ('Submit ' + (state.faceRefFiles.length > 0 ? state.faceRefFiles.length + ' ' : '') + 'Reference Photo' + (state.faceRefFiles.length === 1 ? '' : 's'));
+  }
+
+  function openFaceModal() {
+    clearFaceRefFiles();
+    faceModal.classList.remove('hidden');
+  }
+
+  function closeFaceModal() {
+    if (state.isSubmittingFace) {
+      showToast('Please wait while your reference photos finish uploading.');
+      return;
+    }
+    faceModal.classList.add('hidden');
+    clearFaceRefFiles();
+  }
+
+  topbarFaceBtn.addEventListener('click', function () {
+    if (state.faceProfile && state.faceProfile.status === 'ACTIVE') {
+      switchTab('my');
+    } else {
+      openFaceModal();
+    }
+  });
+  openFaceModalBtn.addEventListener('click', openFaceModal);
+  myEmptyFaceBtn.addEventListener('click', openFaceModal);
+  closeFaceModalBtn.addEventListener('click', closeFaceModal);
+  cancelFaceModalBtn.addEventListener('click', closeFaceModal);
+  faceConsentCheckbox.addEventListener('change', updateSubmitFaceButtonState);
+
+  faceDropzone.addEventListener('click', function () { faceFilePicker.click(); });
+  faceDropzone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      faceFilePicker.click();
+    }
+  });
+  faceFilePicker.addEventListener('change', function () {
+    if (faceFilePicker.files) addFaceRefFiles(faceFilePicker.files);
+    faceFilePicker.value = '';
+  });
+
+  function addFaceRefFiles(fileList) {
+    faceModalMsg.textContent = '';
+    for (var i = 0; i < fileList.length; i++) {
+      if (state.faceRefFiles.length >= 4) {
+        showToast('Maximum 4 reference photos can be submitted at once.', false);
+        break;
+      }
+      var f = fileList[i];
+      if (ALLOWED_TYPES.indexOf(f.type) === -1) {
+        showToast('Skipped "' + f.name + '": Please choose JPEG, PNG, or WebP.', true);
+        continue;
+      }
+      if (f.size > MAX_FILE_BYTES) {
+        showToast('Skipped "' + f.name + '": Exceeds 10 MB limit.', true);
+        continue;
+      }
+      state.faceRefFiles.push({
+        id: 'fref_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+        file: f,
+        previewUrl: URL.createObjectURL(f)
+      });
+    }
+    renderFacePreviewStrip();
+    updateSubmitFaceButtonState();
+  }
+
+  function renderFacePreviewStrip() {
+    facePreviewStrip.innerHTML = '';
+    state.faceRefFiles.forEach(function (item) {
+      var wrap = document.createElement('div');
+      wrap.className = 'face-preview-item';
+
+      var img = document.createElement('img');
+      img.src = item.previewUrl;
+      img.alt = item.file.name;
+
+      var rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'face-preview-rm';
+      rm.textContent = '×';
+      rm.title = 'Remove photo';
+      rm.addEventListener('click', function () {
+        URL.revokeObjectURL(item.previewUrl);
+        state.faceRefFiles = state.faceRefFiles.filter(function (x) { return x.id !== item.id; });
+        renderFacePreviewStrip();
+        updateSubmitFaceButtonState();
+      });
+
+      wrap.appendChild(img);
+      wrap.appendChild(rm);
+      facePreviewStrip.appendChild(wrap);
+    });
+  }
+
+  function resizeFaceReferenceToJpeg(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      var objUrl = URL.createObjectURL(file);
+      img.onload = function () {
+        URL.revokeObjectURL(objUrl);
+        var natW = img.naturalWidth;
+        var natH = img.naturalHeight;
+        var scale = Math.min(1, 1200 / Math.max(natW, natH));
+        var w = Math.max(1, Math.round(natW * scale));
+        var h = Math.max(1, Math.round(natH * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve({
+          filename: file.name,
+          mimeType: 'image/jpeg',
+          base64: canvas.toDataURL('image/jpeg', 0.88)
+        });
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(objUrl);
+        reject(new Error('Could not decode "' + file.name + '".'));
+      };
+      img.src = objUrl;
+    });
+  }
+
+  submitFaceBtn.addEventListener('click', async function () {
+    if (state.isSubmittingFace || !state.token) return;
+    if (!faceConsentCheckbox.checked) {
+      faceModalMsg.textContent = 'Please check the consent box first.';
+      faceModalMsg.className = 'alert-msg error';
+      return;
+    }
+    if (state.faceRefFiles.length === 0) return;
+
+    state.isSubmittingFace = true;
+    faceModalMsg.textContent = 'Preparing reference photos...';
+    faceModalMsg.className = 'alert-msg';
+    updateSubmitFaceButtonState();
+
+    try {
+      var encodedImages = [];
+      for (var i = 0; i < state.faceRefFiles.length; i++) {
+        encodedImages.push(await resizeFaceReferenceToJpeg(state.faceRefFiles[i].file));
+      }
+
+      faceModalMsg.textContent = 'Saving privately for local family face scan...';
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          state.isSubmittingFace = false;
+          if (!res || !res.ok) {
+            updateSubmitFaceButtonState();
+            if (!handleServerAuthError(res && res.error)) {
+              faceModalMsg.textContent = (res && res.error) || 'Could not submit face profile.';
+              faceModalMsg.className = 'alert-msg error';
+            }
+            return;
+          }
+          faceModal.classList.add('hidden');
+          clearFaceRefFiles();
+          showToast('Face photos saved! Suggestions will appear after the next family scan.');
+          loadFaceProfileStatus();
+          if (state.activeTab !== 'my') {
+            switchTab('my');
+          }
+        })
+        .withFailureHandler(function () {
+          state.isSubmittingFace = false;
+          updateSubmitFaceButtonState();
+          faceModalMsg.textContent = 'Network error submitting reference photos. Please try again.';
+          faceModalMsg.className = 'alert-msg error';
+        })
+        .registerFaceProfile({
+          sessionToken: state.token,
+          consentGranted: true,
+          images: encodedImages
+        });
+    } catch (err) {
+      state.isSubmittingFace = false;
+      updateSubmitFaceButtonState();
+      faceModalMsg.textContent = err.message || 'Could not process selected photo.';
+      faceModalMsg.className = 'alert-msg error';
+    }
+  });
+
+  withdrawFaceBtn.addEventListener('click', function () {
+    if (!state.token) return;
+    var ok = window.confirm(
+      'Remove your face profile and clear your personal photo suggestions?\n\n' +
+      'Your shared album photos remain untouched, and you can re-enable My Photos anytime.'
+    );
+    if (!ok) return;
+
+    withdrawFaceBtn.disabled = true;
+    withdrawFaceBtn.textContent = 'Removing...';
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        withdrawFaceBtn.disabled = false;
+        withdrawFaceBtn.textContent = 'Remove Face Data';
+        if (!res || !res.ok) {
+          if (!handleServerAuthError(res && res.error)) {
+            showToast((res && res.error) || 'Could not remove face data.', true);
+          }
+          return;
+        }
+        showToast('Your face profile and suggestions have been removed.');
+        resetAndLoadGallery();
+      })
+      .withFailureHandler(function () {
+        withdrawFaceBtn.disabled = false;
+        withdrawFaceBtn.textContent = 'Remove Face Data';
+        showToast('Network error removing face data. Please try again.', true);
+      })
+      .withdrawFaceConsent(state.token);
   });
 })();
 </script>

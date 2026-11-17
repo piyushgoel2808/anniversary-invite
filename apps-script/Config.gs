@@ -12,12 +12,17 @@ var APP_CONFIG = {
     ORIGINAL_PHOTOS: 'ORIGINAL_PHOTOS',
     THUMBNAILS: 'THUMBNAILS',
     MEDIUM_IMAGES: 'MEDIUM_IMAGES',
-    ADMIN_EXPORTS: 'ADMIN_EXPORTS'
+    ADMIN_EXPORTS: 'ADMIN_EXPORTS',
+    FACE_REFERENCES: 'FACE_REFERENCES'
   },
   SPREADSHEET_NAME: 'SILVER_JUBILEE_GALLERY_DB',
   SHEETS: {
     GUESTS: 'GUEST_DATABASE',
-    PHOTOS: 'PHOTO_DATABASE'
+    PHOTOS: 'PHOTO_DATABASE',
+    FACE_PROFILES: 'FACE_PROFILES',
+    FACE_MATCHES: 'FACE_MATCHES',
+    FACE_REVIEW_LOG: 'FACE_REVIEW_LOG',
+    PHOTO_PROCESSING: 'PHOTO_PROCESSING'
   },
   GUEST_HEADERS: [
     'guest_id',
@@ -44,12 +49,45 @@ var APP_CONFIG = {
     'height',
     'status'
   ],
+  FACE_PROFILE_HEADERS: [
+    'guest_id',
+    'status',
+    'consent',
+    'submitted_at',
+    'processed_at',
+    'profile_version'
+  ],
+  FACE_MATCH_HEADERS: [
+    'photo_id',
+    'guest_id',
+    'confidence',
+    'status',
+    'model_version',
+    'reviewed_at',
+    'reviewed_by'
+  ],
+  FACE_REVIEW_LOG_HEADERS: [
+    'event_id',
+    'photo_id',
+    'guest_id',
+    'action',
+    'timestamp'
+  ],
+  PHOTO_PROCESSING_HEADERS: [
+    'photo_id',
+    'processing_status',
+    'processed_at',
+    'model_version',
+    'error'
+  ],
   LIMITS: {
     SESSION_TTL_SECONDS: 12 * 60 * 60, // 12 hours
     ADMIN_SESSION_TTL_SECONDS: 4 * 60 * 60, // 4 hours
     MAX_ORIGINAL_BYTES: 10 * 1024 * 1024, // 10 MB initial tested limit
     MAX_THUMB_BASE64_CHARS: 250000, // ~180 KB safety bound
     MAX_MEDIUM_BASE64_CHARS: 1500000, // ~1.1 MB safety bound
+    MAX_FACE_REF_PHOTOS: 4, // 2-4 recommended reference photos per guest
+    MAX_FACE_REF_BASE64_CHARS: 3000000, // ~2.2 MB safety bound per reference photo
     LOGIN_MAX_ATTEMPTS: 5,
     LOGIN_LOCKOUT_SECONDS: 15 * 60, // 15 minutes
     DOWNLOAD_MAX_PER_WINDOW: 60, // Generous per-guest burst limit to protect Drive quota
@@ -74,6 +112,7 @@ var APP_CONFIG = {
     THUMBNAILS_FOLDER_ID: 'THUMBNAILS_FOLDER_ID',
     MEDIUM_FOLDER_ID: 'MEDIUM_FOLDER_ID',
     EXPORTS_FOLDER_ID: 'EXPORTS_FOLDER_ID',
+    FACE_REFS_FOLDER_ID: 'FACE_REFS_FOLDER_ID',
     SPREADSHEET_ID: 'SPREADSHEET_ID',
     AUTH_PEPPER: 'AUTH_PEPPER',
     SESSION_SECRET: 'SESSION_SECRET',
@@ -93,6 +132,7 @@ var CACHEABLE_PROP_KEYS_ = {
   THUMBNAILS_FOLDER_ID: true,
   MEDIUM_FOLDER_ID: true,
   EXPORTS_FOLDER_ID: true,
+  FACE_REFS_FOLDER_ID: true,
   SPREADSHEET_ID: true,
   AUTH_PEPPER: true,
   SESSION_SECRET: true
@@ -193,6 +233,17 @@ function getOrCreatePrivateFolder_(parentFolder, name, propKey) {
     }
   }
 
+  if (!folder && parentFolder) {
+    var existingByName = parentFolder.getFoldersByName(name);
+    while (existingByName.hasNext()) {
+      var namedCandidate = existingByName.next();
+      if (!namedCandidate.isTrashed()) {
+        folder = namedCandidate;
+        break;
+      }
+    }
+  }
+
   if (!folder) {
     folder = parentFolder ? parentFolder.createFolder(name) : DriveApp.createFolder(name);
   }
@@ -202,23 +253,68 @@ function getOrCreatePrivateFolder_(parentFolder, name, propKey) {
 }
 
 /**
+ * Ensures a sheet tab exists in the database spreadsheet and has its header row frozen.
+ */
+function ensureSheetWithHeaders_(ss, sheetName, headers) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * Lazily ensures the private FACE_REFERENCES Drive folder exists and returns its ID.
+ */
+function getOrInitFaceRefsFolderId_() {
+  var existing = null;
+  try {
+    existing = getRequiredProp_(APP_CONFIG.PROP_KEYS.FACE_REFS_FOLDER_ID);
+  } catch (e) {
+    existing = null;
+  }
+  if (existing) return existing;
+
+  var rootFolderId = getRequiredProp_(APP_CONFIG.PROP_KEYS.ROOT_FOLDER_ID);
+  var rootFolder = DriveApp.getFolderById(rootFolderId);
+  var faceRefsFolder = getOrCreatePrivateFolder_(
+    rootFolder,
+    APP_CONFIG.SUBFOLDERS.FACE_REFERENCES,
+    APP_CONFIG.PROP_KEYS.FACE_REFS_FOLDER_ID
+  );
+  var folderId = faceRefsFolder.getId();
+  PropertiesService.getScriptProperties().setProperty(
+    APP_CONFIG.PROP_KEYS.FACE_REFS_FOLDER_ID,
+    folderId
+  );
+  clearPropCache_();
+  return folderId;
+}
+
+/**
  * ONE-TIME ADMIN SETUP FUNCTION (Private — call from a temporary editor wrapper and delete wrapper)
  *
  * 1. Generates server-side AUTH_PEPPER & SESSION_SECRET.
  * 2. Creates private ANNIVERSARY_GALLERY/ folder tree in your Google Drive.
- * 3. Creates private SILVER_JUBILEE_GALLERY_DB spreadsheet with GUEST_DATABASE & PHOTO_DATABASE.
+ * 3. Creates private SILVER_JUBILEE_GALLERY_DB spreadsheet with GUEST_DATABASE, PHOTO_DATABASE,
+ *    and face-recognition sheets (FACE_PROFILES, FACE_MATCHES, FACE_REVIEW_LOG, PHOTO_PROCESSING).
  * 4. Stores all IDs in Script Properties so runtime never scans Drive folders.
  */
 function setupInfrastructure_() {
   ensureCryptoSecrets_();
   var props = PropertiesService.getScriptProperties();
 
-  // 1. Root & 4 subfolders (all strictly private)
+  // 1. Root & 5 subfolders (all strictly private)
   var rootFolder = getOrCreatePrivateFolder_(null, APP_CONFIG.ROOT_FOLDER_NAME, APP_CONFIG.PROP_KEYS.ROOT_FOLDER_ID);
   var originalFolder = getOrCreatePrivateFolder_(rootFolder, APP_CONFIG.SUBFOLDERS.ORIGINAL_PHOTOS, APP_CONFIG.PROP_KEYS.ORIGINAL_FOLDER_ID);
   var thumbFolder = getOrCreatePrivateFolder_(rootFolder, APP_CONFIG.SUBFOLDERS.THUMBNAILS, APP_CONFIG.PROP_KEYS.THUMBNAILS_FOLDER_ID);
   var mediumFolder = getOrCreatePrivateFolder_(rootFolder, APP_CONFIG.SUBFOLDERS.MEDIUM_IMAGES, APP_CONFIG.PROP_KEYS.MEDIUM_FOLDER_ID);
   var exportsFolder = getOrCreatePrivateFolder_(rootFolder, APP_CONFIG.SUBFOLDERS.ADMIN_EXPORTS, APP_CONFIG.PROP_KEYS.EXPORTS_FOLDER_ID);
+  var faceRefsFolder = getOrCreatePrivateFolder_(rootFolder, APP_CONFIG.SUBFOLDERS.FACE_REFERENCES, APP_CONFIG.PROP_KEYS.FACE_REFS_FOLDER_ID);
 
   // 2. Database Spreadsheet inside ANNIVERSARY_GALLERY (strictly private)
   var existingSheetId = props.getProperty(APP_CONFIG.PROP_KEYS.SPREADSHEET_ID);
@@ -244,27 +340,15 @@ function setupInfrastructure_() {
     ssFile.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
   }
 
-  // Ensure GUEST_DATABASE tab + headers
-  var guestSheet = ss.getSheetByName(APP_CONFIG.SHEETS.GUESTS);
-  if (!guestSheet) {
-    guestSheet = ss.insertSheet(APP_CONFIG.SHEETS.GUESTS);
-  }
-  if (guestSheet.getLastRow() === 0) {
-    guestSheet.appendRow(APP_CONFIG.GUEST_HEADERS);
-    guestSheet.setFrozenRows(1);
-  }
+  // Ensure core + face-recognition sheets with frozen headers
+  ensureSheetWithHeaders_(ss, APP_CONFIG.SHEETS.GUESTS, APP_CONFIG.GUEST_HEADERS);
+  ensureSheetWithHeaders_(ss, APP_CONFIG.SHEETS.PHOTOS, APP_CONFIG.PHOTO_HEADERS);
+  ensureSheetWithHeaders_(ss, APP_CONFIG.SHEETS.FACE_PROFILES, APP_CONFIG.FACE_PROFILE_HEADERS);
+  ensureSheetWithHeaders_(ss, APP_CONFIG.SHEETS.FACE_MATCHES, APP_CONFIG.FACE_MATCH_HEADERS);
+  ensureSheetWithHeaders_(ss, APP_CONFIG.SHEETS.FACE_REVIEW_LOG, APP_CONFIG.FACE_REVIEW_LOG_HEADERS);
+  ensureSheetWithHeaders_(ss, APP_CONFIG.SHEETS.PHOTO_PROCESSING, APP_CONFIG.PHOTO_PROCESSING_HEADERS);
 
-  // Ensure PHOTO_DATABASE tab + headers
-  var photoSheet = ss.getSheetByName(APP_CONFIG.SHEETS.PHOTOS);
-  if (!photoSheet) {
-    photoSheet = ss.insertSheet(APP_CONFIG.SHEETS.PHOTOS);
-  }
-  if (photoSheet.getLastRow() === 0) {
-    photoSheet.appendRow(APP_CONFIG.PHOTO_HEADERS);
-    photoSheet.setFrozenRows(1);
-  }
-
-  // Remove default empty Sheet1 if both database tabs exist
+  // Remove default empty Sheet1 if database tabs exist
   var defaultSheet = ss.getSheetByName('Sheet1');
   if (defaultSheet && ss.getSheets().length > 2 && defaultSheet.getLastRow() === 0) {
     ss.deleteSheet(defaultSheet);
@@ -277,6 +361,7 @@ function setupInfrastructure_() {
     THUMBNAILS_FOLDER_ID: thumbFolder.getId(),
     MEDIUM_FOLDER_ID: mediumFolder.getId(),
     EXPORTS_FOLDER_ID: exportsFolder.getId(),
+    FACE_REFS_FOLDER_ID: faceRefsFolder.getId(),
     SPREADSHEET_ID: ss.getId()
   });
   clearPropCache_();
@@ -286,7 +371,14 @@ function setupInfrastructure_() {
     rootFolder: rootFolder.getName(),
     spreadsheetName: ss.getName(),
     foldersInitialized: Object.keys(APP_CONFIG.SUBFOLDERS),
-    sheetsInitialized: [APP_CONFIG.SHEETS.GUESTS, APP_CONFIG.SHEETS.PHOTOS],
+    sheetsInitialized: [
+      APP_CONFIG.SHEETS.GUESTS,
+      APP_CONFIG.SHEETS.PHOTOS,
+      APP_CONFIG.SHEETS.FACE_PROFILES,
+      APP_CONFIG.SHEETS.FACE_MATCHES,
+      APP_CONFIG.SHEETS.FACE_REVIEW_LOG,
+      APP_CONFIG.SHEETS.PHOTO_PROCESSING
+    ],
     note: 'All Drive folders and Sheets are set to PRIVATE. Next: run setAdminCredentials_(username, strongPassword) from a temporary editor function.'
   };
   Logger.log(JSON.stringify(summary, null, 2));

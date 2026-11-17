@@ -100,9 +100,83 @@
     </header>
 
     <main class="gallery-container">
+      <!-- View Switcher: All Photos vs My Photos -->
+      <div class="view-tabs-wrap">
+        <div class="segmented-tabs" role="tablist" aria-label="Gallery view">
+          <button
+            type="button"
+            class="seg-tab active"
+            id="tab-all-photos"
+            role="tab"
+            aria-selected="true"
+          >
+            All Photos
+          </button>
+          <button
+            type="button"
+            class="seg-tab"
+            id="tab-my-photos"
+            role="tab"
+            aria-selected="false"
+          >
+            <span>My Photos</span>
+            <span id="my-photos-pending-badge" class="seg-tab-badge hidden">0</span>
+          </button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-topbar-face">
+            Add My Face
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-gallery">
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- My Photos Personal Panel (Face Profile + Pending Suggestions) -->
+      <section id="my-photos-panel" class="hidden" aria-label="Your face profile and suggested photographs">
+        <div id="face-banner-card" class="face-banner-card">
+          <div class="face-banner-info">
+            <div class="face-banner-header">
+              <span class="face-banner-title">Your Face Profile</span>
+              <span id="face-status-pill" class="face-status-pill none">Not Set Up</span>
+            </div>
+            <p id="face-banner-desc" class="face-banner-desc">
+              Upload 2&ndash;4 clear photographs of yourself to find pictures you appear in across the shared Silver Jubilee album. You always review and approve every suggestion.
+            </p>
+          </div>
+          <div class="face-banner-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-open-face-modal">
+              Add My Face
+            </button>
+            <button type="button" class="btn btn-danger btn-sm hidden" id="btn-withdraw-face">
+              Remove Face Data
+            </button>
+          </div>
+        </div>
+
+        <!-- Pending Suggestions awaiting Guest Confirmation -->
+        <div id="suggestions-panel" class="suggestions-panel hidden">
+          <div class="suggestions-header">
+            <div>
+              <h2 class="suggestions-title" id="suggestions-heading">Suggested for You</h2>
+              <p class="suggestions-sub">
+                Are you in these photographs? Confirm to add them to your personal album.
+              </p>
+            </div>
+          </div>
+          <div id="suggestions-grid" class="suggestions-grid"></div>
+          <div id="suggestions-more-wrap" class="load-more-wrap hidden" style="margin-top:14px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-load-more-suggestions">
+              Load More Suggestions
+            </button>
+          </div>
+        </div>
+      </section>
+
       <div class="gallery-meta-bar">
         <span id="gallery-count-label">Loading album...</span>
-        <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-gallery">Refresh</button>
       </div>
 
       <!-- Loading Skeleton -->
@@ -115,13 +189,22 @@
         <div class="skeleton-card"></div>
       </div>
 
-      <!-- Empty State -->
+      <!-- Empty State (All Photos) -->
       <div id="gallery-empty" class="empty-state hidden">
         <h2 class="script-heading" style="font-size:2rem;margin-bottom:8px;">Begin the Album</h2>
         <p style="color:var(--text-muted);line-height:1.5;margin-bottom:18px;">
           No photographs have been shared yet. Be the first to add a cherished memory from Navneet &amp; Ruby's 25th Anniversary!
         </p>
         <button type="button" class="btn btn-primary" id="btn-empty-upload">Upload First Photograph</button>
+      </div>
+
+      <!-- Empty State (My Photos Confirmed) -->
+      <div id="my-photos-empty" class="empty-state hidden">
+        <h2 class="script-heading" style="font-size:1.9rem;margin-bottom:8px;">Your Personal Album</h2>
+        <p id="my-photos-empty-desc" style="color:var(--text-muted);line-height:1.5;margin-bottom:18px;">
+          Confirmed photographs of you will appear here. Add your face profile or confirm suggestions above to build your personal album.
+        </p>
+        <button type="button" class="btn btn-primary" id="btn-my-empty-face">Add My Face</button>
       </div>
 
       <!-- Responsive Balanced Masonry Collage -->
@@ -181,6 +264,64 @@
       <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;justify-content:flex-end;">
         <button type="button" class="btn btn-secondary btn-sm hidden" id="btn-retry-failed">Retry Failed</button>
         <button type="button" class="btn btn-primary" id="btn-start-upload" disabled>Upload Selected Photos</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       3B. ADD MY FACE (CONSENT + REFERENCE PHOTO UPLOAD MODAL)
+       ===================================================================== -->
+  <div id="face-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="face-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div>
+          <h2 id="face-modal-title" class="script-heading" style="font-size:1.9rem;">Find Your Photos</h2>
+          <p style="font-size:0.84rem;color:var(--text-muted);">
+            Private, on-device family face matching &bull; Zero cloud AI
+          </p>
+        </div>
+        <button type="button" class="modal-close" id="btn-close-face-modal" aria-label="Close face setup dialog">&times;</button>
+      </div>
+
+      <p style="font-size:0.9rem;color:var(--text-main);line-height:1.45;">
+        Select <strong>2 to 4 clear photographs of just yourself</strong> for best accuracy:
+      </p>
+      <ul class="face-tips-list">
+        <li>One clear straight-facing photo in good lighting</li>
+        <li>One slightly angled or smiling photo</li>
+        <li>Avoid group photos or dark sunglasses where possible</li>
+      </ul>
+
+      <div id="face-dropzone" class="dropzone" tabindex="0" role="button">
+        <p style="font-size:0.96rem;font-weight:600;color:var(--royal-blue);margin-bottom:4px;">
+          Tap to choose 2&ndash;4 selfies / portraits
+        </p>
+        <p style="font-size:0.8rem;color:var(--text-muted);">
+          JPEG, PNG or WebP &bull; Resized automatically before upload
+        </p>
+        <input
+          type="file"
+          id="face-file-picker"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          class="hidden"
+        />
+      </div>
+
+      <div id="face-preview-strip" class="face-preview-strip"></div>
+
+      <label class="consent-box" for="face-consent-checkbox">
+        <input type="checkbox" id="face-consent-checkbox" />
+        <span>
+          I consent to having my reference photographs processed privately by the family's local computer to suggest shared album photographs in which I appear. Every suggestion requires my approval, and I can remove my face data at any time.
+        </span>
+      </label>
+
+      <div class="alert-msg" id="face-modal-msg" role="alert" aria-live="polite"></div>
+
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-face-modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-submit-face" disabled>Submit Reference Photos</button>
       </div>
     </div>
   </div>
