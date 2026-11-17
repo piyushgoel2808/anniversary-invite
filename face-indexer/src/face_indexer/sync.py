@@ -17,6 +17,7 @@ import json
 import os
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -782,6 +783,7 @@ def run_sync(
     strategy: ScoringStrategy = "max_ref",
     delete_refs_after_processing: bool = False,
     staging_dir: Path | None = None,
+    progress_cb: Callable[[str], None] | None = None,
 ) -> SyncReport:
     """Execute one complete incremental sync cycle between Google Drive/Sheets and local SQLite."""
     t0 = time.perf_counter()
@@ -793,6 +795,11 @@ def run_sync(
     photos_indexed = 0
     photos_failed = 0
 
+    def _log(msg: str) -> None:
+        if progress_cb is not None:
+            progress_cb(msg)
+
+    _log("[1/5] Fetching remote gallery state & verifying face sheets...")
     backend.ensure_face_sheets()
 
     # 1. Pull guest review decisions from FACE_MATCHES into local SQLite
@@ -801,6 +808,7 @@ def run_sync(
         if rm.status in PROTECTED_REVIEW_STATUSES or rm.status == "REVOKED":
             store.update_suggestion_status(rm.photo_id, rm.guest_id, rm.status)
             reviews_pulled += 1
+    _log(f"[1/5] Synced {reviews_pulled} guest review decision(s).")
 
     with tempfile.TemporaryDirectory(
         prefix="face_indexer_sync_", dir=str(staging_dir) if staging_dir else None
@@ -809,10 +817,12 @@ def run_sync(
 
         # 2. Process FACE_PROFILES (new registrations and consent withdrawals)
         remote_profiles = backend.list_face_profiles()
+        _log(f"[2/5] Checking {len(remote_profiles)} guest face profile(s)...")
         for prof in remote_profiles:
             now_iso = datetime.datetime.now(datetime.UTC).isoformat()
 
             if prof.status == "WITHDRAWN" or prof.consent == "REVOKED":
+                _log(f"      Revoking face data for {prof.display_name} ({prof.guest_id})...")
                 store.revoke_guest(prof.guest_id)
                 try:
                     for ref_file in backend.list_guest_reference_files(prof.guest_id):
@@ -824,6 +834,7 @@ def run_sync(
                 continue
 
             if prof.status == "PENDING_PROCESSING" and prof.consent == "GRANTED":
+                _log(f"      Processing reference photos for {prof.display_name}...")
                 guest_tmp = tmp_path / "refs" / prof.guest_id
                 guest_tmp.mkdir(parents=True, exist_ok=True)
                 try:
@@ -845,17 +856,22 @@ def run_sync(
                     if new_status == "ACTIVE" and delete_refs_after_processing:
                         for rf in ref_files:
                             backend.delete_reference_file(rf)
+                    _log(
+                        f"      -> {prof.display_name}: {new_status} "
+                        f"({total_valid} valid reference face(s))"
+                    )
                     profiles_processed += 1
                 except Exception as exc:
                     errors.append(f"Profile {prof.guest_id}: {exc}")
 
         # 3. Incrementally index newly uploaded active album photos
         remote_photos = backend.list_active_photos()
+        _log(f"[3/5] Scanning {len(remote_photos)} active album photo(s)...")
         processing_records: list[PhotoProcessingRecord] = []
         photos_tmp = tmp_path / "photos"
         photos_tmp.mkdir(parents=True, exist_ok=True)
 
-        for rphoto in remote_photos:
+        for idx, rphoto in enumerate(remote_photos, start=1):
             # Fast skip if sheet already supplies matching SHA-256 file_hash
             if rphoto.file_hash and store.is_photo_indexed(
                 rphoto.photo_id, rphoto.file_hash, COMBINED_MODEL_VERSION
@@ -866,6 +882,10 @@ def run_sync(
             ext = Path(rphoto.original_filename).suffix or ".jpg"
             local_file = photos_tmp / f"{rphoto.photo_id}{ext}"
             now_iso = datetime.datetime.now(datetime.UTC).isoformat()
+            _log(
+                f"      [{idx}/{len(remote_photos)}] Downloading & analyzing "
+                f"{rphoto.original_filename}..."
+            )
             try:
                 backend.download_photo(rphoto, local_file)
                 actual_hash = rphoto.file_hash or compute_file_sha256(local_file)
@@ -885,6 +905,7 @@ def run_sync(
                     analysis=analysis,
                 )
                 photos_indexed += 1
+                _log(f"      -> Indexed {len(analysis.faces)} face(s) in {analysis.total_ms:.0f}ms")
                 processing_records.append(
                     PhotoProcessingRecord(
                         photo_id=rphoto.photo_id,
@@ -913,10 +934,12 @@ def run_sync(
             backend.upsert_photo_processing(processing_records)
 
     # 4. Run local SQLite matching (milliseconds across all cached faces)
+    _log(f"[4/5] Matching cached faces locally (threshold={threshold})...")
     match_summary = run_matching(store, threshold=threshold, strategy=strategy)
 
     # 5. Push unsynced suggestions to FACE_MATCHES (metadata only — never embeddings)
     unsynced = store.get_unsynced_suggestions()
+    _log(f"[5/5] Pushing {len(unsynced)} new suggestion(s) to FACE_MATCHES...")
     payload = [
         RemoteFaceMatch(
             photo_id=s.photo_id,

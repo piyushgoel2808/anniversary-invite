@@ -249,6 +249,9 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
 
 def _cmd_sync(args: argparse.Namespace) -> int:
+    def _progress(msg: str) -> None:
+        print(msg, flush=True)
+
     store = _open_store(args)
     engine = FaceRecognitionEngine(
         models_dir=Path(args.models_dir),
@@ -256,6 +259,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
     )
 
     if args.spreadsheet_id:
+        _progress("Connecting via Google Drive & Sheets API...")
         google_backend = GoogleWorkspaceBackend(
             spreadsheet_id=str(args.spreadsheet_id),
             credentials_path=Path(args.credentials),
@@ -269,6 +273,7 @@ def _cmd_sync(args: argparse.Namespace) -> int:
             threshold=float(args.threshold),
             strategy=cast(ScoringStrategy, args.strategy),
             delete_refs_after_processing=bool(args.delete_refs),
+            progress_cb=_progress,
         )
     else:
         admin_user = args.admin_user or os.environ.get("FACE_INDEXER_ADMIN_USER") or ""
@@ -276,14 +281,16 @@ def _cmd_sync(args: argparse.Namespace) -> int:
             admin_user = input("Admin username: ").strip()
         admin_pass = os.environ.get("FACE_INDEXER_ADMIN_PASSWORD") or ""
         if not admin_pass:
-            admin_pass = getpass.getpass("Admin password: ")
+            admin_pass = getpass.getpass("Admin password (hidden while typing): ")
 
+        _progress(f"Signing in as admin '{admin_user}' (Apps Script)...")
         with AppsScriptBackend(
             apps_script_url=str(args.apps_script_url),
             admin_username=admin_user,
             admin_password=admin_pass,
             photo_variant=str(args.variant),
         ) as apps_backend:
+            _progress("Signed in successfully.")
             report = run_sync(
                 apps_backend,
                 store,
@@ -291,7 +298,9 @@ def _cmd_sync(args: argparse.Namespace) -> int:
                 threshold=float(args.threshold),
                 strategy=cast(ScoringStrategy, args.strategy),
                 delete_refs_after_processing=bool(args.delete_refs),
+                progress_cb=_progress,
             )
+            _progress("Signing out admin session...")
 
     print("\n=== Silver Jubilee Face Indexer — Sync Summary ===")
     print(f"Reviews pulled:       {report.reviews_pulled}")
