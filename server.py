@@ -28,16 +28,39 @@ DB_PATH = os.path.join(BASE_DIR, "blessings.db")
 UPLOADED_VIDEO_PATH = "/Users/piyushgoel/.gemini/antigravity/brain/3beffddf-63cb-48c1-a4c4-2f5c06fbac73/.user_uploaded/media_1794912736318_965aa237.mp4"
 STATIC_VIDEO_PATH = os.path.join(STATIC_DIR, "couple-video.mp4")
 
+UPLOADED_PHOTO_PATH = "/Users/piyushgoel/.gemini/antigravity/brain/3beffddf-63cb-48c1-a4c4-2f5c06fbac73/.user_uploaded/media_1794915867520_d9d5ece1.mp4"
+STATIC_PHOTO_VIDEO = os.path.join(STATIC_DIR, "couple-origami.mp4")
+ROOT_PHOTO_VIDEO = os.path.join(BASE_DIR, "couple-origami.mp4")
+
 
 def sync_video_asset():
-    """Auto-copies the uploaded celebration video to the static folder on server launch."""
+    """Auto-copies the uploaded assets to static and root folders on server launch."""
     try:
+        # Preserve original celebration video (do not delete)
         if os.path.exists(UPLOADED_VIDEO_PATH):
-            if not os.path.exists(STATIC_VIDEO_PATH) or os.path.getsize(STATIC_VIDEO_PATH) != os.path.getsize(UPLOADED_VIDEO_PATH):
+            if not os.path.exists(STATIC_VIDEO_PATH):
                 shutil.copy2(UPLOADED_VIDEO_PATH, STATIC_VIDEO_PATH)
-                print(f"🎬 Synced couple celebration video to {STATIC_VIDEO_PATH}")
+
+        # Sync new couple origami live photo/video asset to root and static
+        if os.path.exists(UPLOADED_PHOTO_PATH):
+            for target in (STATIC_PHOTO_VIDEO, ROOT_PHOTO_VIDEO):
+                if not os.path.exists(target) or os.path.getsize(target) != os.path.getsize(UPLOADED_PHOTO_PATH):
+                    shutil.copy2(UPLOADED_PHOTO_PATH, target)
+                    print(f"🖼️ Synced couple portrait asset to {target}")
+
+            # Try generating static PNG thumbnail via macOS built-in qlmanage
+            thumb_path = os.path.join(BASE_DIR, "couple-portrait.png")
+            static_thumb = os.path.join(STATIC_DIR, "couple-portrait.png")
+            if not os.path.exists(thumb_path):
+                import subprocess
+                subprocess.run(["qlmanage", "-t", "-s", "1080", "-o", BASE_DIR, ROOT_PHOTO_VIDEO], capture_output=True)
+                gen = os.path.join(BASE_DIR, "couple-origami.mp4.png")
+                if os.path.exists(gen):
+                    os.rename(gen, thumb_path)
+                    shutil.copy2(thumb_path, static_thumb)
+                    print(f"📸 Generated high-res portrait image: {thumb_path}")
     except Exception as e:
-        print(f"Video sync note: {e}")
+        print(f"Asset sync note: {e}")
 
 # Default family password (can be overridden via ADMIN_PASSWORD env var)
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "goel25")
@@ -105,8 +128,13 @@ class InviteRequestHandler(SimpleHTTPRequestHandler):
             self.path = "/index.html"
             return super().do_GET()
 
-        if route in ("/couple-video.mp4", "/static/couple-video.mp4"):
-            video_file = STATIC_VIDEO_PATH if os.path.exists(STATIC_VIDEO_PATH) else UPLOADED_VIDEO_PATH
+        if route in ("/couple-video.mp4", "/static/couple-video.mp4", "/couple-origami.mp4", "/static/couple-origami.mp4"):
+            if "origami" in route:
+                video_file = STATIC_PHOTO_VIDEO if os.path.exists(STATIC_PHOTO_VIDEO) else (
+                    ROOT_PHOTO_VIDEO if os.path.exists(ROOT_PHOTO_VIDEO) else UPLOADED_PHOTO_PATH
+                )
+            else:
+                video_file = STATIC_VIDEO_PATH if os.path.exists(STATIC_VIDEO_PATH) else UPLOADED_VIDEO_PATH
             if os.path.exists(video_file):
                 file_size = os.path.getsize(video_file)
                 range_header = self.headers.get("Range")
