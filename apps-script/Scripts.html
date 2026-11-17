@@ -812,7 +812,7 @@
     return new Promise(function (resolve, reject) {
       var useFormBlob = false;
       try {
-        if (typeof DataTransfer !== 'undefined') {
+        if (!window.__GAS_FETCH_BRIDGE__ && typeof DataTransfer !== 'undefined') {
           var dt = new DataTransfer();
           dt.items.add(item.file);
           var fileInput = document.getElementById('hidden-original-file');

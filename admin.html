@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel — Silver Jubilee Memories Gallery</title>
+  <style>
+  :root {
+    --ivory-bg: #FAF7F2;
+    --cream-warm: #F4EFE6;
+    --cream-deep: #EBE3D5;
+    --royal-blue: #1B3664;
+    --deep-navy: #0F2242;
+    --soft-blue: #3C5A8A;
+    --silver-light: #E8ECF2;
+    --silver-mid: #BEC6D4;
+    --silver-dark: #7E8B9F;
+    --text-main: #182C4F;
+    --text-muted: #4A5C7A;
+    --danger: #9E2A2B;
+    --card-bg: rgba(255, 255, 255, 0.92);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    min-height: 100%;
+    background-color: var(--ivory-bg);
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(212, 222, 238, 0.42) 0%, transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(212, 222, 238, 0.35) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M28 0 L56 28 L28 56 L0 28 Z' fill='none' stroke='%23B8C2D1' stroke-width='0.55' stroke-opacity='0.28'/%3E%3Ccircle cx='28' cy='28' r='1.4' fill='%239BA8BC' fill-opacity='0.22'/%3E%3C/svg%3E");
+    font-family: 'Baskerville', 'Cormorant Garamond', 'Palatino Linotype', 'Hoefler Text', Georgia, serif;
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .script-heading {
+    font-family: 'Snell Roundhand', 'Apple Chancery', 'Brush Script MT', 'Baskerville', cursive, serif;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--royal-blue);
+    line-height: 1.2;
+  }
+
+  .serif-caps {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--soft-blue);
+    font-weight: 600;
+  }
+
+  .hidden { display: none !important; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-family: inherit;
+    font-size: 0.96rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--royal-blue) 0%, var(--deep-navy) 100%);
+    color: #FFFFFF;
+    box-shadow: 0 6px 16px rgba(27, 54, 100, 0.24);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(27, 54, 100, 0.34);
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.88);
+    color: var(--royal-blue);
+    border-color: var(--silver-mid);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: #FFFFFF;
+    border-color: var(--royal-blue);
+  }
+
+  .btn-danger {
+    background: #FFFFFF;
+    color: var(--danger);
+    border-color: rgba(158, 42, 43, 0.35);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: #FDF2F2;
+    border-color: var(--danger);
+  }
+
+  .btn-sm {
+    padding: 6px 13px;
+    font-size: 0.84rem;
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Form controls */
+  .form-group {
+    margin-bottom: 14px;
+    text-align: left;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--royal-blue);
+    margin-bottom: 5px;
+    letter-spacing: 0.03em;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+
+  .form-input, .form-textarea, .form-select {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--silver-mid);
+    background: #FAFBFD;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--text-main);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .form-input:focus, .form-textarea:focus, .form-select:focus {
+    border-color: var(--royal-blue);
+    box-shadow: 0 0 0 3px rgba(27, 54, 100, 0.12);
+    background: #FFFFFF;
+  }
+
+  .toggle-pw {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--soft-blue);
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .alert-msg {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    min-height: 1.3em;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .alert-msg.error { color: var(--danger); }
+  .alert-msg.success { color: var(--royal-blue); }
+
+  /* Auth Card */
+  .auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 16px;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--card-bg);
+    border: 1px solid var(--silver-mid);
+    border-radius: 22px;
+    padding: 32px 26px 26px 26px;
+    box-shadow: 0 18px 46px rgba(15, 34, 66, 0.14);
+    text-align: center;
+  }
+
+  .lotus-emblem {
+    width: 68px;
+    height: 46px;
+    margin: 0 auto 8px auto;
+    display: block;
+  }
+
+  .auth-title {
+    font-size: 2.3rem;
+    margin-bottom: 4px;
+  }
+
+  .auth-sub {
+    font-size: 0.94rem;
+    color: var(--text-muted);
+    margin: 8px 0 22px 0;
+    line-height: 1.45;
+  }
+
+  .privacy-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--silver-light);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+  }
+
+  /* Sticky Top Navigation */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(250, 247, 242, 0.94);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(190, 198, 212, 0.65);
+    padding: 12px 18px;
+  }
+
+  .topbar-inner {
+    max-width: 1240px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .brand-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-title {
+    font-size: 1.65rem;
+    line-height: 1.1;
+  }
+
+  .brand-guest {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Gallery Main Container */
+  .gallery-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 20px 14px 72px 14px;
+  }
+
+  .gallery-hero {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .gallery-meta-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1240px;
+    margin: 0 auto 14px auto;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+
+  /* Responsive Balanced Masonry Collage (2 mobile / 3 tablet / 4 desktop) */
+  .masonry-grid {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .masonry-column {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .photo-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(190, 198, 212, 0.72);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(27, 54, 100, 0.08);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .photo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px rgba(27, 54, 100, 0.14);
+  }
+
+  .photo-media-box {
+    position: relative;
+    width: 100%;
+    background: linear-gradient(110deg, #EEF2F7 25%, #F8FAFC 50%, #EEF2F7 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+    min-height: 150px;
+    overflow: hidden;
+  }
+
+  .photo-media-box.loaded {
+    animation: none;
+    background: #F3F6FA;
+  }
+
+  .photo-media-box img {
+    display: block;
+    width: 100%;
+    height: auto;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+
+  .photo-media-box.loaded img {
+    opacity: 1;
+  }
+
+  .photo-caption {
+    padding: 9px 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: #FFFFFF;
+  }
+
+  .photo-author {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--royal-blue);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .photo-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Skeleton Cards */
+  .skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  @media (min-width: 680px) {
+    .skeleton-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (min-width: 1024px) {
+    .skeleton-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .skeleton-card {
+    border-radius: 14px;
+    height: 230px;
+    background: linear-gradient(110deg, #E8ECF2 25%, #F5F7FA 50%, #E8ECF2 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
+  }
+
+  /* Empty State */
+  .empty-state {
+    max-width: 460px;
+    margin: 42px auto;
+    padding: 36px 24px;
+    background: var(--card-bg);
+    border: 1px solid var(--silver-mid);
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(27, 54, 100, 0.08);
+  }
+
+  .load-more-wrap {
+    text-align: center;
+    margin-top: 28px;
+  }
+
+  /* Modal / Upload Drawer */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(15, 34, 66, 0.62);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .modal-panel {
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--ivory-bg);
+    border: 1px solid var(--silver-mid);
+    border-radius: 22px;
+    padding: 24px 22px;
+    box-shadow: 0 24px 60px rgba(15, 34, 66, 0.28);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .modal-close {
+    background: none;
+    border: 1px solid var(--silver-mid);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    color: var(--royal-blue);
+    cursor: pointer;
+  }
+
+  .dropzone {
+    border: 2px dashed var(--silver-dark);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.72);
+    padding: 26px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .dropzone.dragover {
+    border-color: var(--royal-blue);
+    background: #EFF4FB;
+  }
+
+  .queue-list {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .queue-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #FFFFFF;
+    border: 1px solid var(--silver-mid);
+    border-radius: 12px;
+    padding: 8px 10px;
+  }
+
+  .queue-thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--silver-light);
+    flex-shrink: 0;
+  }
+
+  .queue-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .queue-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .queue-meta {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .progress-bar {
+    height: 5px;
+    border-radius: 99px;
+    background: var(--silver-light);
+    margin-top: 6px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--soft-blue), var(--royal-blue));
+    transition: width 0.25s ease;
+  }
+
+  .queue-remove {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 1.15rem;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+
+  /* Full-Screen Lightbox */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(11, 22, 43, 0.94);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 14px;
+    color: #FFFFFF;
+  }
+
+  .lightbox-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .lightbox-stage {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+
+  .lightbox-img {
+    max-width: 100%;
+    max-height: 78vh;
+    border-radius: 10px;
+    object-fit: contain;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    user-select: none;
+  }
+
+  .lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(15, 34, 66, 0.65);
+    color: #FFFFFF;
+    font-size: 1.4rem;
+    cursor: pointer;
+  }
+
+  .lightbox-nav.prev { left: 8px; }
+  .lightbox-nav.next { right: 8px; }
+
+  .lightbox-footer {
+    text-align: center;
+    padding-bottom: 6px;
+  }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 120;
+    padding: 11px 20px;
+    border-radius: 999px;
+    background: var(--deep-navy);
+    color: #FFFFFF;
+    font-size: 0.9rem;
+    box-shadow: 0 10px 26px rgba(15, 34, 66, 0.35);
+    max-width: 92vw;
+    text-align: center;
+  }
+
+  .toast.error {
+    background: var(--danger);
+  }
+
+  /* Admin Table & Stat Cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--silver-mid);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 1.85rem;
+    font-weight: 700;
+    color: var(--royal-blue);
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .tabs-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .tab-btn.active {
+    background: var(--royal-blue);
+    color: #FFFFFF;
+    border-color: var(--royal-blue);
+  }
+
+  .admin-panel-card {
+    background: var(--card-bg);
+    border: 1px solid var(--silver-mid);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  th, td {
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(190, 198, 212, 0.55);
+    text-align: left;
+  }
+
+  th {
+    color: var(--royal-blue);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .badge-active { background: #E3ECF8; color: var(--royal-blue); }
+  .badge-inactive { background: #F5E6E6; color: var(--danger); }
+</style>
+
+</head>
+<body>
+
+  <!-- 1. ISOLATED ADMIN LOGIN -->
+  <section id="admin-login-view" class="auth-screen">
+    <div class="auth-card">
+      <p class="serif-caps">Administrator Console</p>
+      <h1 class="script-heading auth-title">Silver Jubilee</h1>
+      <p class="auth-sub">Sign in with your administrator credentials to manage guests, moderate photos, and download originals.</p>
+
+      <form id="admin-login-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="adm-user">Admin Username</label>
+          <input type="text" id="adm-user" class="form-input" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="adm-pass">Admin Password</label>
+          <input type="password" id="adm-pass" class="form-input" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;" id="btn-adm-login">Unlock Admin Panel</button>
+        <div class="alert-msg" id="adm-login-error" role="alert"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- 2. ADMIN DASHBOARD -->
+  <div id="admin-app-view" class="hidden">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div>
+          <h1 class="script-heading brand-title">Gallery Administration</h1>
+          <p class="brand-guest" id="adm-user-label">Administrator</p>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-adm-export">Export Metadata CSV</button>
+          <button type="button" class="btn btn-danger btn-sm" id="btn-adm-logout">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="gallery-container">
+      <!-- KPI Summary -->
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="st-guests">0</div><div class="stat-label">Guests (Active)</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-photos">0</div><div class="stat-label">Active Photos</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-hidden">0</div><div class="stat-label">Hidden Photos</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-storage">0 MB</div><div class="stat-label">Originals Stored</div></div>
+      </div>
+
+      <!-- Recent Uploads Feed -->
+      <div class="admin-panel-card" id="recent-uploads-card">
+        <h3 style="color:var(--royal-blue);margin-bottom:8px;">Recent Uploads</h3>
+        <div id="adm-recent-list" style="font-size:0.86rem;color:var(--text-muted);">Loading recent activity...</div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-bar">
+        <button type="button" class="btn btn-secondary btn-sm tab-btn active" data-tab="photos">Photo Moderation</button>
+        <button type="button" class="btn btn-secondary btn-sm tab-btn" data-tab="guests">Guest Management &amp; CSV Import</button>
+      </div>
+
+      <!-- TAB: PHOTO MODERATION -->
+      <section id="tab-photos">
+        <div class="admin-panel-card">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+            <input type="text" id="photo-search" class="form-input" style="max-width:260px;" placeholder="Search by guest or filename..." />
+            <select id="photo-status-filter" class="form-select" style="max-width:160px;">
+              <option value="all">All Non-Deleted</option>
+              <option value="active">Active Only</option>
+              <option value="hidden">Hidden Only</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-photo-search">Filter</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Preview</th>
+                  <th>Guest</th>
+                  <th>Filename &amp; Size</th>
+                  <th>Uploaded</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adm-photos-tbody"></tbody>
+            </table>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px;flex-wrap:wrap;">
+            <span id="adm-photo-page-info" style="font-size:0.85rem;color:var(--text-muted);">Page 1</span>
+            <div style="display:flex;gap:8px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-photo-prev" disabled>Previous</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-photo-next" disabled>Next</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: GUEST MANAGEMENT & CSV IMPORT -->
+      <section id="tab-guests" class="hidden">
+        <div class="admin-panel-card">
+          <h3 style="color:var(--royal-blue);margin-bottom:8px;">Bulk Import Guests via CSV</h3>
+          <p style="font-size:0.86rem;color:var(--text-muted);margin-bottom:10px;">
+            Columns required: <code>guest_name,username,mobile,upload_permission</code>. Mobile numbers are normalized, salted, hashed with HMAC-SHA-256 + pepper, and never stored in plaintext.
+          </p>
+          <input type="file" id="csv-file-input" accept=".csv,text/csv" style="margin-bottom:10px;" />
+          <textarea id="csv-text-input" class="form-textarea" style="height:105px;margin-bottom:10px;" placeholder="guest_name,username,mobile,upload_permission&#10;Rahul Sharma,rahul123,9876543210,true"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-import-csv">Import Guests</button>
+            <span id="csv-import-result" style="font-size:0.86rem;color:var(--royal-blue);font-weight:600;"></span>
+          </div>
+        </div>
+
+        <div class="admin-panel-card">
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+            <input type="text" id="guest-search" class="form-input" style="max-width:260px;" placeholder="Search guest name or username..." />
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-guest-search">Search</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Guest Name</th>
+                  <th>Username</th>
+                  <th>Status</th>
+                  <th>Can Upload</th>
+                  <th>Controls</th>
+                </tr>
+              </thead>
+              <tbody id="adm-guests-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script>
+(function () {
+  'use strict';
+  var GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzwdnvh5-p_inJpdrlkHzm6QL_JRoBnXZTzJuaJdSLdLkrdUvoeO4hSBe61EhPo938m/exec';
+  if (typeof window.google !== 'undefined' && window.google.script && window.google.script.run) {
+    return;
+  }
+  window.__GAS_FETCH_BRIDGE__ = true;
+
+  var ALLOWED_ACTIONS = [
+    'guestLogin', 'checkGuestSession', 'guestLogout',
+    'listGalleryPhotos', 'getPrivatePhoto', 'getPrivatePhotoBatch',
+    'uploadGuestPhotoBase64', 'deleteGuestPhoto', 'editGuestPhoto',
+    'adminLogin', 'adminCheckSession', 'adminLogout',
+    'adminGetDashboard', 'adminListGuests', 'adminImportGuestsCsv',
+    'adminUpdateGuest', 'adminListPhotos', 'adminGetPhotoVariant',
+    'adminModeratePhoto', 'adminExportMetadataCsv'
+  ];
+
+  function createRunner(onSuccess, onFailure) {
+    var runner = {
+      withSuccessHandler: function (fn) { return createRunner(fn, onFailure); },
+      withFailureHandler: function (fn) { return createRunner(onSuccess, fn); }
+    };
+    ALLOWED_ACTIONS.forEach(function (action) {
+      runner[action] = function () {
+        var args = Array.prototype.slice.call(arguments);
+        fetch(GAS_API_URL, {
+          method: 'POST',
+          mode: 'cors',
+          credentials: 'omit',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: action, args: args })
+        })
+          .then(function (resp) {
+            if (!resp.ok) {
+              throw new Error('HTTP ' + resp.status);
+            }
+            return resp.text();
+          })
+          .then(function (txt) {
+            var data = JSON.parse(txt);
+            if (typeof onSuccess === 'function') onSuccess(data);
+          })
+          .catch(function (err) {
+            if (typeof onFailure === 'function') onFailure(err);
+          });
+      };
+    });
+    return runner;
+  }
+
+  window.google = {
+    script: {
+      run: createRunner(null, null)
+    }
+  };
+})();
+</script>
+  <script>
+  (function () {
+    'use strict';
+    var ADMIN_TOKEN_KEY = 'sj_admin_session_token';
+    var adminToken = sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
+    var photoPage = 1;
+    var photoReqGen = 0;
+    var PHOTO_PAGE_SIZE = 20;
+
+    var loginView = document.getElementById('admin-login-view');
+    var appView = document.getElementById('admin-app-view');
+    var loginErr = document.getElementById('adm-login-error');
+    var toastEl = document.getElementById('toast');
+    var toastTimer = null;
+
+    function showToast(msg, isError) {
+      toastEl.textContent = msg;
+      toastEl.className = 'toast' + (isError ? ' error' : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.classList.add('hidden'); }, 3500);
+    }
+
+    function handleAdminAuthError(errMsg) {
+      if (errMsg && (errMsg.indexOf('UNAUTHORIZED') !== -1 || errMsg.indexOf('FORBIDDEN') !== -1)) {
+        exitAdmin();
+        showToast('Admin session expired. Please sign in again.', true);
+        return true;
+      }
+      return false;
+    }
+
+    function dataUrlToBlob(dataUrl, fallbackMime) {
+      var parts = String(dataUrl || '').split(',');
+      var mimeMatch = parts[0] && parts[0].match(/data:([^;]+);base64/i);
+      var mime = (mimeMatch && mimeMatch[1]) || fallbackMime || 'application/octet-stream';
+      var bin = atob(parts[1] || '');
+      var len = bin.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) {
+        bytes[i] = bin.charCodeAt(i);
+      }
+      return new Blob([bytes], { type: mime });
+    }
+
+    function fmtSize(bytes) {
+      if (!bytes) return '0 MB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function enterAdmin(username) {
+      loginView.classList.add('hidden');
+      appView.classList.remove('hidden');
+      document.getElementById('adm-user-label').textContent = 'Signed in as ' + username;
+      loadDashboard();
+      loadPhotos();
+      loadGuests();
+    }
+
+    function exitAdmin() {
+      adminToken = '';
+      photoPage = 1;
+      photoReqGen++;
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+      document.getElementById('adm-photos-tbody').innerHTML = '';
+      document.getElementById('adm-guests-tbody').innerHTML = '';
+      document.getElementById('adm-recent-list').textContent = '';
+      appView.classList.add('hidden');
+      loginView.classList.remove('hidden');
+    }
+
+    document.getElementById('admin-login-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      loginErr.textContent = '';
+      var u = document.getElementById('adm-user').value.trim();
+      var p = document.getElementById('adm-pass').value;
+      var btn = document.getElementById('btn-adm-login');
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.disabled = false;
+          if (!res || !res.ok) {
+            loginErr.textContent = (res && res.error) || 'Invalid credentials.';
+            loginErr.className = 'alert-msg error';
+            return;
+          }
+          adminToken = res.token;
+          sessionStorage.setItem(ADMIN_TOKEN_KEY, res.token);
+          document.getElementById('adm-pass').value = '';
+          enterAdmin(res.adminUsername);
+        })
+        .withFailureHandler(function () {
+          btn.disabled = false;
+          loginErr.textContent = 'Connection error.';
+          loginErr.className = 'alert-msg error';
+        })
+        .adminLogin(u, p);
+    });
+
+    document.getElementById('btn-adm-logout').addEventListener('click', function () {
+      var t = adminToken;
+      exitAdmin();
+      if (t) google.script.run.adminLogout(t);
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var tab = btn.dataset.tab;
+        document.getElementById('tab-photos').classList.toggle('hidden', tab !== 'photos');
+        document.getElementById('tab-guests').classList.toggle('hidden', tab !== 'guests');
+      });
+    });
+
+    function loadDashboard() {
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (!res || !res.ok) {
+            handleAdminAuthError(res && res.error);
+            return;
+          }
+          document.getElementById('st-guests').textContent = res.stats.totalGuests + ' (' + res.stats.activeGuests + ')';
+          document.getElementById('st-photos').textContent = String(res.stats.activePhotos);
+          document.getElementById('st-hidden').textContent = String(res.stats.hiddenPhotos);
+          document.getElementById('st-storage').textContent = fmtSize(res.stats.totalOriginalBytes);
+
+          var recentEl = document.getElementById('adm-recent-list');
+          recentEl.innerHTML = '';
+          if (!res.recentUploads || res.recentUploads.length === 0) {
+            recentEl.textContent = 'No photographs uploaded yet.';
+          } else {
+            var ul = document.createElement('ul');
+            ul.style.listStyle = 'none';
+            ul.style.display = 'flex';
+            ul.style.flexDirection = 'column';
+            ul.style.gap = '6px';
+            res.recentUploads.slice(0, 6).forEach(function (item) {
+              var li = document.createElement('li');
+              var ts = item.upload_timestamp ? new Date(item.upload_timestamp).toLocaleString('en-IN') : '';
+              li.textContent = item.guest_name + ' uploaded ' + item.original_filename + ' (' + fmtSize(item.file_size) + ') — ' + ts + ' [' + item.status + ']';
+              ul.appendChild(li);
+            });
+            recentEl.appendChild(ul);
+          }
+        })
+        .withFailureHandler(function () {
+          showToast('Could not load dashboard metrics.', true);
+        })
+        .adminGetDashboard(adminToken);
+    }
+
+    function loadGuests() {
+      var q = document.getElementById('guest-search').value.trim();
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (!res || !res.ok) {
+            if (!handleAdminAuthError(res && res.error)) {
+              showToast((res && res.error) || 'Failed to load guests.', true);
+            }
+            return;
+          }
+          var tbody = document.getElementById('adm-guests-tbody');
+          tbody.innerHTML = '';
+          res.guests.forEach(function (g) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td'); td1.textContent = g.guest_name;
+            var td2 = document.createElement('td'); td2.textContent = g.username;
+            var td3 = document.createElement('td');
+            var stBadge = document.createElement('span');
+            stBadge.className = 'badge ' + (g.status === 'active' ? 'badge-active' : 'badge-inactive');
+            stBadge.textContent = g.status;
+            td3.appendChild(stBadge);
+
+            var td4 = document.createElement('td');
+            td4.textContent = g.upload_permission ? 'Enabled' : 'Disabled';
+
+            var td5 = document.createElement('td');
+            var toggleStatus = document.createElement('button');
+            toggleStatus.className = 'btn btn-secondary btn-sm';
+            toggleStatus.textContent = g.status === 'active' ? 'Deactivate' : 'Activate';
+            toggleStatus.addEventListener('click', function () {
+              var nextSt = g.status === 'active' ? 'inactive' : 'active';
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  if (r && r.ok) { showToast('Guest updated.'); loadGuests(); loadDashboard(); }
+                  else if (!handleAdminAuthError(r && r.error)) { showToast((r && r.error) || 'Update failed.', true); }
+                })
+                .withFailureHandler(function () { showToast('Network error updating guest.', true); })
+                .adminUpdateGuest(adminToken, g.guest_id, nextSt, null);
+            });
+
+            var toggleUp = document.createElement('button');
+            toggleUp.className = 'btn btn-secondary btn-sm';
+            toggleUp.style.marginLeft = '6px';
+            toggleUp.textContent = g.upload_permission ? 'Revoke Upload' : 'Allow Upload';
+            toggleUp.addEventListener('click', function () {
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  if (r && r.ok) { showToast('Upload permission updated.'); loadGuests(); }
+                  else if (!handleAdminAuthError(r && r.error)) { showToast((r && r.error) || 'Update failed.', true); }
+                })
+                .withFailureHandler(function () { showToast('Network error updating permission.', true); })
+                .adminUpdateGuest(adminToken, g.guest_id, null, !g.upload_permission);
+            });
+
+            td5.appendChild(toggleStatus);
+            td5.appendChild(toggleUp);
+            tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+            tbody.appendChild(tr);
+          });
+        })
+        .withFailureHandler(function () {
+          showToast('Network error loading guest list.', true);
+        })
+        .adminListGuests(adminToken, q);
+    }
+
+    function loadPhotos() {
+      var q = document.getElementById('photo-search').value.trim();
+      var sf = document.getElementById('photo-status-filter').value;
+      var gen = ++photoReqGen;
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (gen !== photoReqGen) return;
+          if (!res || !res.ok) {
+            if (!handleAdminAuthError(res && res.error)) {
+              showToast((res && res.error) || 'Failed to load photos.', true);
+            }
+            return;
+          }
+          var totalPages = Math.max(1, Math.ceil((res.totalCount || 0) / PHOTO_PAGE_SIZE));
+          if (res.page > totalPages) {
+            photoPage = totalPages;
+            loadPhotos();
+            return;
+          }
+          photoPage = res.page;
+          document.getElementById('adm-photo-page-info').textContent =
+            'Page ' + res.page + ' of ' + totalPages + ' (' + res.totalCount + ' total)';
+          document.getElementById('btn-photo-prev').disabled = res.page <= 1;
+          document.getElementById('btn-photo-next').disabled = !res.hasMore;
+
+          var tbody = document.getElementById('adm-photos-tbody');
+          tbody.innerHTML = '';
+          res.photos.forEach(function (p) {
+            var tr = document.createElement('tr');
+
+            var tdPrev = document.createElement('td');
+            var prevBtn = document.createElement('button');
+            prevBtn.className = 'btn btn-secondary btn-sm';
+            prevBtn.textContent = 'Preview';
+            prevBtn.addEventListener('click', function () {
+              prevBtn.disabled = true;
+              google.script.run
+                .withSuccessHandler(function (imgRes) {
+                  if (imgRes && imgRes.ok) {
+                    var img = document.createElement('img');
+                    img.src = imgRes.dataUrl;
+                    img.style.width = '64px'; img.style.borderRadius = '8px';
+                    tdPrev.innerHTML = '';
+                    tdPrev.appendChild(img);
+                  } else {
+                    prevBtn.disabled = false;
+                    if (!handleAdminAuthError(imgRes && imgRes.error)) {
+                      showToast((imgRes && imgRes.error) || 'Preview failed.', true);
+                    }
+                  }
+                })
+                .withFailureHandler(function () {
+                  prevBtn.disabled = false;
+                  showToast('Network error loading preview.', true);
+                })
+                .adminGetPhotoVariant(adminToken, p.photo_id, 'thumbnail');
+            });
+            tdPrev.appendChild(prevBtn);
+
+            var tdGuest = document.createElement('td');
+            tdGuest.textContent = p.guest_name + ' (' + p.username + ')';
+
+            var tdFile = document.createElement('td');
+            tdFile.textContent = p.original_filename + ' (' + fmtSize(p.file_size) + ')';
+
+            var tdTime = document.createElement('td');
+            tdTime.textContent = p.upload_timestamp ? new Date(p.upload_timestamp).toLocaleString('en-IN') : '';
+
+            var tdStat = document.createElement('td');
+            var b = document.createElement('span');
+            b.className = 'badge ' + (p.status === 'active' ? 'badge-active' : 'badge-inactive');
+            b.textContent = p.status;
+            tdStat.appendChild(b);
+
+            var tdAct = document.createElement('td');
+            var dlBtn = document.createElement('button');
+            dlBtn.className = 'btn btn-secondary btn-sm';
+            dlBtn.textContent = 'Original';
+            dlBtn.addEventListener('click', function () {
+              dlBtn.disabled = true;
+              showToast('Preparing original download...');
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  dlBtn.disabled = false;
+                  if (!r || !r.ok) {
+                    if (!handleAdminAuthError(r && r.error)) {
+                      showToast((r && r.error) || 'Download failed', true);
+                    }
+                    return;
+                  }
+                  var blob = dataUrlToBlob(r.dataUrl, r.mimeType);
+                  var objUrl = URL.createObjectURL(blob);
+                  var a = document.createElement('a');
+                  a.href = objUrl;
+                  a.download = r.filename || (p.photo_id + '.jpg');
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  setTimeout(function () { URL.revokeObjectURL(objUrl); }, 4000);
+                })
+                .withFailureHandler(function () {
+                  dlBtn.disabled = false;
+                  showToast('Network error downloading original.', true);
+                })
+                .adminGetPhotoVariant(adminToken, p.photo_id, 'original');
+            });
+
+            var hideBtn = document.createElement('button');
+            hideBtn.className = 'btn btn-secondary btn-sm';
+            hideBtn.style.marginLeft = '4px';
+            hideBtn.textContent = p.status === 'active' ? 'Hide' : 'Restore';
+            hideBtn.addEventListener('click', function () {
+              var act = p.status === 'active' ? 'hide' : 'restore';
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  if (r && r.ok) { showToast('Photo updated.'); loadPhotos(); loadDashboard(); }
+                  else if (!handleAdminAuthError(r && r.error)) { showToast((r && r.error) || 'Action failed.', true); }
+                })
+                .withFailureHandler(function () { showToast('Network error updating photo.', true); })
+                .adminModeratePhoto(adminToken, p.photo_id, act);
+            });
+
+            var delBtn = document.createElement('button');
+            delBtn.className = 'btn btn-danger btn-sm';
+            delBtn.style.marginLeft = '4px';
+            delBtn.textContent = 'Delete';
+            delBtn.addEventListener('click', function () {
+              if (!confirm('Permanently delete this photograph from Drive and the gallery?')) return;
+              google.script.run
+                .withSuccessHandler(function (r) {
+                  if (r && r.ok) { showToast('Photo deleted.'); loadPhotos(); loadDashboard(); }
+                  else if (!handleAdminAuthError(r && r.error)) { showToast((r && r.error) || 'Delete failed.', true); }
+                })
+                .withFailureHandler(function () { showToast('Network error deleting photo.', true); })
+                .adminModeratePhoto(adminToken, p.photo_id, 'delete');
+            });
+
+            tdAct.appendChild(dlBtn); tdAct.appendChild(hideBtn); tdAct.appendChild(delBtn);
+            tr.appendChild(tdPrev); tr.appendChild(tdGuest); tr.appendChild(tdFile);
+            tr.appendChild(tdTime); tr.appendChild(tdStat); tr.appendChild(tdAct);
+            tbody.appendChild(tr);
+          });
+        })
+        .withFailureHandler(function () {
+          if (gen !== photoReqGen) return;
+          showToast('Network error loading photos.', true);
+        })
+        .adminListPhotos(adminToken, q, sf, photoPage, PHOTO_PAGE_SIZE);
+    }
+
+    document.getElementById('btn-photo-search').addEventListener('click', function () {
+      photoPage = 1;
+      loadPhotos();
+    });
+    document.getElementById('btn-photo-prev').addEventListener('click', function () {
+      if (photoPage > 1) { photoPage--; loadPhotos(); }
+    });
+    document.getElementById('btn-photo-next').addEventListener('click', function () {
+      photoPage++;
+      loadPhotos();
+    });
+    document.getElementById('btn-guest-search').addEventListener('click', loadGuests);
+
+    document.getElementById('csv-file-input').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      var reader = new FileReader();
+      reader.onload = function () { document.getElementById('csv-text-input').value = reader.result; };
+      reader.readAsText(f);
+    });
+
+    document.getElementById('btn-import-csv').addEventListener('click', function () {
+      var csv = document.getElementById('csv-text-input').value.trim();
+      var resEl = document.getElementById('csv-import-result');
+      if (!csv) { resEl.textContent = 'Paste or choose a CSV file first.'; return; }
+      resEl.textContent = 'Importing & hashing credentials...';
+      google.script.run
+        .withSuccessHandler(function (r) {
+          if (!r || !r.ok) {
+            if (!handleAdminAuthError(r && r.error)) {
+              resEl.textContent = (r && r.error) || 'Import failed.';
+            }
+            return;
+          }
+          resEl.textContent = 'Imported ' + r.importedCount + ' guest(s). Skipped duplicates: ' + (r.skippedDuplicates || []).length + '. Errors: ' + (r.errors || []).length;
+          loadGuests();
+          loadDashboard();
+        })
+        .withFailureHandler(function () {
+          resEl.textContent = 'Network error importing CSV. Please retry.';
+        })
+        .adminImportGuestsCsv(adminToken, csv);
+    });
+
+    document.getElementById('btn-adm-export').addEventListener('click', function () {
+      showToast('Exporting metadata to Drive ADMIN_EXPORTS/...');
+      google.script.run
+        .withSuccessHandler(function (r) {
+          if (!r || !r.ok) {
+            if (!handleAdminAuthError(r && r.error)) {
+              showToast((r && r.error) || 'Export failed', true);
+            }
+            return;
+          }
+          var blob = new Blob([r.csvText], { type: 'text/csv;charset=utf-8;' });
+          var objUrl = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = objUrl;
+          a.download = r.filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(objUrl); }, 4000);
+          showToast('Exported ' + r.rowCount + ' records (copy saved in Drive ADMIN_EXPORTS/).');
+        })
+        .withFailureHandler(function () {
+          showToast('Network error exporting metadata.', true);
+        })
+        .adminExportMetadataCsv(adminToken);
+    });
+
+    if (adminToken) {
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (res && res.ok) enterAdmin(res.adminUsername);
+          else exitAdmin();
+        })
+        .withFailureHandler(exitAdmin)
+        .adminCheckSession(adminToken);
+    }
+  })();
+  </script>
+</body>
+</html>

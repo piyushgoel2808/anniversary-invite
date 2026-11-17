@@ -1228,15 +1228,13 @@
          Set MEMORIES_GALLERY_URL to the deployed Google Apps Script /exec URL
          once Phase 10 production deployment is verified.
          ===================================================================== */
-      const MEMORIES_GALLERY_URL = 'https://script.google.com/macros/s/AKfycbzwdnvh5-p_inJpdrlkHzm6QL_JRoBnXZTzJuaJdSLdLkrdUvoeO4hSBe61EhPo938m/exec';
+      const MEMORIES_GALLERY_URL = './memories.html';
       const memoriesBtn = document.getElementById('btn-enter-memories');
       const memoriesStatusEl = document.getElementById('memories-status-msg');
 
       if (memoriesBtn) {
         if (MEMORIES_GALLERY_URL) {
           memoriesBtn.setAttribute('href', MEMORIES_GALLERY_URL);
-          memoriesBtn.setAttribute('target', '_blank');
-          memoriesBtn.setAttribute('rel', 'noopener noreferrer');
         } else {
           memoriesBtn.addEventListener('click', (e) => {
             e.preventDefault();

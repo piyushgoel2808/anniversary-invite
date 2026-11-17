@@ -32,6 +32,59 @@ function doGet(e) {
 }
 
 /**
+ * Web App HTTP POST JSON API Entrypoint (for GitHub Pages frontend using credentials: 'omit').
+ * Completely bypasses Google's multi-account /u/1/ browser cookie conflict on iPhone Safari/Chrome.
+ * Strictly allowlists ONLY the public authenticated RPC actions (no private '_' functions).
+ */
+function doPost(e) {
+  var result;
+  try {
+    var rawBody = (e && e.postData && e.postData.contents) ? e.postData.contents : '';
+    if (!rawBody) {
+      throw new Error('INVALID_REQUEST: Empty request body.');
+    }
+    var req = JSON.parse(rawBody);
+    var action = (req && typeof req.action === 'string') ? req.action : '';
+    var args = (req && Array.isArray(req.args)) ? req.args : [];
+
+    var handlers = {
+      guestLogin: guestLogin,
+      checkGuestSession: checkGuestSession,
+      guestLogout: guestLogout,
+      listGalleryPhotos: listGalleryPhotos,
+      getPrivatePhoto: getPrivatePhoto,
+      getPrivatePhotoBatch: getPrivatePhotoBatch,
+      uploadGuestPhotoBase64: uploadGuestPhotoBase64,
+      deleteGuestPhoto: deleteGuestPhoto,
+      editGuestPhoto: editGuestPhoto,
+      adminLogin: adminLogin,
+      adminCheckSession: adminCheckSession,
+      adminLogout: adminLogout,
+      adminGetDashboard: adminGetDashboard,
+      adminListGuests: adminListGuests,
+      adminImportGuestsCsv: adminImportGuestsCsv,
+      adminUpdateGuest: adminUpdateGuest,
+      adminListPhotos: adminListPhotos,
+      adminGetPhotoVariant: adminGetPhotoVariant,
+      adminModeratePhoto: adminModeratePhoto,
+      adminExportMetadataCsv: adminExportMetadataCsv
+    };
+
+    if (!Object.prototype.hasOwnProperty.call(handlers, action)) {
+      result = { ok: false, error: 'UNKNOWN_ACTION: Unsupported API action.' };
+    } else {
+      result = handlers[action].apply(null, args);
+    }
+  } catch (err) {
+    result = { ok: false, error: (err && err.message) ? err.message : 'Server error.' };
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
  * HTML Service partial include helper (private — used server-side for <?!= include_('Styles'); ?>)
  */
 function include_(filename) {
