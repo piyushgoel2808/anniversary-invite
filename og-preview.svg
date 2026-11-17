@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FAF7F2"/>
+      <stop offset="50%" stop-color="#F3EDE2"/>
+      <stop offset="100%" stop-color="#EAE0D0"/>
+    </linearGradient>
+    <linearGradient id="silverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E6E9EF"/>
+      <stop offset="35%" stop-color="#B8C0CC"/>
+      <stop offset="50%" stop-color="#FFFFFF"/>
+      <stop offset="70%" stop-color="#8E99A8"/>
+      <stop offset="100%" stop-color="#D4D9E2"/>
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A6D"/>
+      <stop offset="100%" stop-color="#0F2347"/>
+    </linearGradient>
+    <pattern id="jaali" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M30 0 L60 30 L30 60 L0 30 Z" fill="none" stroke="#C5CCD6" stroke-width="0.7" opacity="0.45"/>
+      <circle cx="30" cy="30" r="3" fill="#B8C0CC" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+  <rect width="1200" height="630" fill="url(#jaali)"/>
+  <rect x="28" y="28" width="1144" height="574" rx="18" fill="none" stroke="url(#silverGrad)" stroke-width="3"/>
+  <rect x="38" y="38" width="1124" height="554" rx="12" fill="none" stroke="#1E3A6D" stroke-width="1" stroke-dasharray="6,6" opacity="0.5"/>
+  
+  <text x="600" y="95" text-anchor="middle" font-family="serif" font-size="26" fill="#1E3A6D" letter-spacing="2">॥ श्री गणेशाय नमः ॥</text>
+  
+  <circle cx="600" cy="195" r="68" fill="#FAF7F2" stroke="url(#silverGrad)" stroke-width="4"/>
+  <circle cx="600" cy="195" r="60" fill="none" stroke="#1E3A6D" stroke-width="1" opacity="0.4"/>
+  <text x="600" y="212" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="48" fill="#1E3A6D">N &amp; R</text>
+  
+  <text x="600" y="340" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="68" fill="#13294B">Navneet &amp; Ruby</text>
+  <text x="600" y="395" text-anchor="middle" font-family="Georgia, serif" font-size="26" fill="#4A5B78" letter-spacing="5">25 YEARS TOGETHER • SILVER JUBILEE</text>
+  <text x="600" y="455" text-anchor="middle" font-family="Georgia, serif" font-size="28" fill="#1E3A6D" font-weight="bold">Wednesday, 25 November 2026 • 7:00 PM Onwards</text>
+  <text x="600" y="495" text-anchor="middle" font-family="Georgia, serif" font-size="22" fill="#526077">Golden Dreams Banquets, Block K, Kalkaji, New Delhi</text>
+  
+  <!-- Silver Lotus Emblem at bottom -->
+  <g transform="translate(600, 560)">
+    <path d="M0,-28 C10,-15 12,5 0,18 C-12,5 -10,-15 0,-28 Z" fill="url(#silverGrad)" stroke="#7A869A" stroke-width="1"/>
+    <path d="M0,18 C12,5 28,-12 32,4 C26,16 12,20 0,18 Z" fill="url(#silverGrad)" stroke="#7A869A" stroke-width="1"/>
+    <path d="M0,18 C-12,5 -28,-12 -32,4 C-26,16 -12,20 0,18 Z" fill="url(#silverGrad)" stroke="#7A869A" stroke-width="1"/>
+    <path d="M0,18 C18,10 42,2 44,15 C32,24 14,22 0,18 Z" fill="#D5DCE6" stroke="#7A869A" stroke-width="1"/>
+    <path d="M0,18 C-18,10 -42,2 -44,15 C-32,24 -14,22 0,18 Z" fill="#D5DCE6" stroke="#7A869A" stroke-width="1"/>
+  </g>
+</svg>

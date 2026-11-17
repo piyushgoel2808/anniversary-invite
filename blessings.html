@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family Blessings Vault — Navneet &amp; Ruby Silver Jubilee</title>
+  <style>
+    :root {
+      --ivory-bg: #FAF7F2;
+      --royal-blue: #1B3664;
+      --deep-navy: #0F2242;
+      --silver-mid: #BEC6D4;
+      --text-main: #182C4F;
+      --text-muted: #4A5C7A;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 50% 20%, #FAF7F2 0%, #E5DFD3 100%);
+      font-family: 'Baskerville', 'Palatino Linotype', 'Hoefler Text', 'Georgia', serif;
+      color: var(--text-main);
+      padding: 32px 16px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .vault-container {
+      width: 100%;
+      max-width: 540px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--silver-mid);
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow: 0 18px 48px rgba(15, 34, 66, 0.14);
+    }
+
+    .vault-header {
+      text-align: center;
+      border-bottom: 1px solid rgba(190, 198, 212, 0.6);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+
+    .script-heading {
+      font-family: 'Snell Roundhand', 'Apple Chancery', 'Zapfino', 'Baskerville', cursive, serif;
+      font-size: 2.35rem;
+      color: var(--royal-blue);
+      font-weight: 500;
+    }
+
+    .subtitle {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .login-box {
+      max-width: 340px;
+      margin: 12px auto;
+      text-align: center;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--silver-mid);
+      font-family: inherit;
+      font-size: 1.02rem;
+      margin: 12px 0;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--royal-blue);
+      box-shadow: 0 0 0 3px rgba(27, 54, 100, 0.12);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 11px 18px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--royal-blue) 0%, var(--deep-navy) 100%);
+      color: #FFFFFF;
+      font-family: inherit;
+      font-size: 1.02rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .error-msg {
+      color: #9E2A2B;
+      font-size: 0.92rem;
+      margin-top: 8px;
+      min-height: 1.2em;
+    }
+
+    .blessings-list {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .blessing-item {
+      background: #FAFBFD;
+      border: 1px solid #DCE3EE;
+      border-left: 4px solid var(--royal-blue);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .blessing-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+
+    .guest-name {
+      font-size: 1.12rem;
+      font-weight: 700;
+      color: var(--royal-blue);
+    }
+
+    .timestamp {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .guest-message {
+      font-size: 1.02rem;
+      line-height: 1.45;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      color: var(--royal-blue);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.96rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="vault-container">
+    <div class="vault-header">
+      <h1 class="script-heading">Navneet &amp; Ruby</h1>
+      <p class="subtitle">Private Family Blessings Book</p>
+    </div>
+
+    <div class="login-box" id="login-view">
+      <p style="font-size: 1.02rem; color: var(--text-main);">
+        Enter the family password to view all guest blessings.
+      </p>
+      <form id="login-form">
+        <input
+          type="password"
+          id="admin-password"
+          class="form-input"
+          placeholder="Enter family password"
+          required
+        />
+        <button type="submit" class="btn-primary">Unlock Blessings</button>
+        <div class="error-msg" id="login-error"></div>
+      </form>
+    </div>
+
+    <div class="blessings-list" id="blessings-view">
+      <div class="stats-bar">
+        <span id="total-count">0 Blessings Received</span>
+        <button id="btn-refresh" style="background:none;border:1px solid #BEC6D4;padding:4px 12px;border-radius:99px;cursor:pointer;font-family:inherit;color:var(--royal-blue);">Refresh</button>
+      </div>
+      <div id="blessings-feed" style="display:flex;flex-direction:column;gap:12px;"></div>
+    </div>
+
+    <div style="text-align: center;">
+      <a href="/" class="back-link">&larr; Back to Invitation Website</a>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const loginView = document.getElementById('login-view');
+      const blessingsView = document.getElementById('blessings-view');
+      const loginForm = document.getElementById('login-form');
+      const pwdInput = document.getElementById('admin-password');
+      const errorEl = document.getElementById('login-error');
+      const feedEl = document.getElementById('blessings-feed');
+      const countEl = document.getElementById('total-count');
+      const refreshBtn = document.getElementById('btn-refresh');
+
+      let savedPassword = sessionStorage.getItem('goel_family_pwd') || '';
+
+      async function loadBlessings(password) {
+        errorEl.textContent = '';
+        try {
+          const res = await fetch('/api/admin/blessings?password=' + encodeURIComponent(password));
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || 'Invalid password');
+          }
+          sessionStorage.setItem('goel_family_pwd', password);
+          savedPassword = password;
+          loginView.style.display = 'none';
+          blessingsView.style.display = 'flex';
+
+          countEl.textContent = data.count + (data.count === 1 ? ' Blessing Received' : ' Blessings Received');
+          feedEl.innerHTML = '';
+
+          if (!data.blessings || data.blessings.length === 0) {
+            feedEl.innerHTML = '<p style="text-align:center;color:#4A5C7A;padding:20px;">No blessings sent yet.</p>';
+            return;
+          }
+
+          data.blessings.forEach((item) => {
+            const card = document.createElement('div');
+            card.className = 'blessing-item';
+
+            const meta = document.createElement('div');
+            meta.className = 'blessing-meta';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'guest-name';
+            nameSpan.textContent = item.name;
+
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'timestamp';
+            timeSpan.textContent = item.created_at;
+
+            meta.appendChild(nameSpan);
+            meta.appendChild(timeSpan);
+
+            const msgP = document.createElement('p');
+            msgP.className = 'guest-message';
+            msgP.textContent = item.message;
+
+            card.appendChild(meta);
+            card.appendChild(msgP);
+            feedEl.appendChild(card);
+          });
+        } catch (err) {
+          errorEl.textContent = err.message || 'Incorrect password.';
+        }
+      }
+
+      loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pwd = (pwdInput.value || '').trim();
+        if (!pwd) return;
+        loadBlessings(pwd);
+      });
+
+      refreshBtn.addEventListener('click', () => {
+        if (savedPassword) loadBlessings(savedPassword);
+      });
+
+      if (savedPassword) {
+        loadBlessings(savedPassword);
+      }
+    })();
+  </script>
+</body>
+</html>

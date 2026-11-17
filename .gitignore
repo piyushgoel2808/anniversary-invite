@@ -1,0 +1,10 @@
+# Python & SQLite
+__pycache__/
+*.py[cod]
+*$py.class
+blessings.db
+*.sqlite3
+
+# OS metadata
+.DS_Store
+Thumbs.db

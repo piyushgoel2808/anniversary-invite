@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>Navneet &amp; Ruby — Silver Jubilee (25th Wedding Anniversary) Invitation</title>
+  <meta name="description" content="With the blessings of the Almighty, we joyfully invite you to celebrate 25 years of our togetherness — Navneet Goel &amp; Ruby Goel on Wednesday, 25 November 2026 in New Delhi." />
+
+  <!-- Open Graph / WhatsApp Preview Meta Tags -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Navneet &amp; Ruby • 25 Years Together (Silver Jubilee Invitation)" />
+  <meta property="og:description" content="॥ श्री गणेशाय नमः ॥ With the blessings of the Almighty, we joyfully invite you to celebrate 25 years of our togetherness — Wednesday, 25 November 2026, 7 PM onwards at Golden Dreams Banquets, Block K, Kalkaji, New Delhi." />
+  <meta property="og:image" content="/og-preview.png" />
+  <meta property="og:image:width" content="600" />
+  <meta property="og:image:height" content="315" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Navneet &amp; Ruby • 25 Years Together" />
+  <meta name="twitter:description" content="Celebrate 25 years of togetherness — Wednesday, 25 November 2026, 7 PM onwards at Golden Dreams Banquets, New Delhi." />
+  <meta name="twitter:image" content="/og-preview.png" />
+  <meta name="theme-color" content="#FAF7F2" />
+
+  <style>
+    :root {
+      --ivory-bg: #FAF7F2;
+      --cream-warm: #F4EFE6;
+      --cream-deep: #EBE3D5;
+      --royal-blue: #1B3664;
+      --deep-navy: #0F2242;
+      --soft-blue: #3C5A8A;
+      --silver-light: #E8ECF2;
+      --silver-mid: #BEC6D4;
+      --silver-dark: #7E8B9F;
+      --text-main: #182C4F;
+      --text-muted: #4A5C7A;
+      --phone-width: 390px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      background-color: #E2DCD0;
+      background-image: radial-gradient(circle at 50% 30%, #EFECE6 0%, #D8D0C2 100%);
+      font-family: 'Baskerville', 'Cormorant Garamond', 'Palatino Linotype', 'Hoefler Text', Georgia, serif;
+      color: var(--text-main);
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Outer wrapper centres the 390px mobile viewport on desktop screens */
+    .desktop-stage {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    /* 390px Mobile-First Container */
+    .phone-viewport {
+      position: relative;
+      width: 100%;
+      max-width: var(--phone-width);
+      min-height: 100vh;
+      background: var(--ivory-bg);
+      box-shadow: 0 20px 60px rgba(15, 34, 66, 0.22), 0 0 0 1px rgba(190, 198, 212, 0.6);
+      overflow-x: hidden;
+    }
+
+    /* Subtle hand-painted watercolor & silver lattice background texture */
+    .ambient-texture {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: var(--phone-width);
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      background-image:
+        radial-gradient(circle at 20% 15%, rgba(212, 222, 238, 0.35) 0%, transparent 45%),
+        radial-gradient(circle at 80% 75%, rgba(212, 222, 238, 0.3) 0%, transparent 50%),
+        url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M28 0 L56 28 L28 56 L0 28 Z' fill='none' stroke='%23B8C2D1' stroke-width='0.55' stroke-opacity='0.32'/%3E%3Ccircle cx='28' cy='28' r='1.5' fill='%239BA8BC' fill-opacity='0.25'/%3E%3C/svg%3E");
+    }
+
+    /* Classical Carved Pillars on Left & Right Edges (matching reference video) */
+    .architectural-frame {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: var(--phone-width);
+      height: 100vh;
+      pointer-events: none;
+      z-index: 4;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .pillar-side {
+      width: 28px;
+      height: 100%;
+      opacity: 0.88;
+    }
+
+    /* Falling Flowers & Rose Petals Canvas Overlay */
+    #petal-canvas {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: var(--phone-width);
+      height: 100vh;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    /* COMMON THREAD: Persistent Floating Silver Lotus on Every Page */
+    .floating-lotus-dock {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 64px;
+      height: 44px;
+      z-index: 12;
+      pointer-events: none;
+      filter: drop-shadow(0 4px 10px rgba(27, 54, 100, 0.16));
+      animation: lotusFloat 4.2s ease-in-out infinite;
+    }
+
+    @keyframes lotusFloat {
+      0%, 100% {
+        transform: translateX(-50%) translateY(0px) scale(1);
+      }
+      50% {
+        transform: translateX(-50%) translateY(-5px) scale(1.03);
+      }
+    }
+
+    /* Each Page Fills the Phone Screen and Scrolls Naturally Upward */
+    .invite-page {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 46px 34px 74px 34px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    /* Page specific subtle hand-painted washes (ivory, cream, silver shimmer, deep blue accents) */
+    .page-1 {
+      background: linear-gradient(180deg, rgba(250, 247, 242, 0.92) 0%, rgba(244, 239, 230, 0.82) 100%);
+    }
+    .page-2 {
+      background: linear-gradient(180deg, rgba(244, 239, 230, 0.82) 0%, rgba(238, 242, 248, 0.88) 50%, rgba(246, 242, 234, 0.88) 100%);
+    }
+    .page-3 {
+      background: linear-gradient(180deg, rgba(246, 242, 234, 0.9) 0%, rgba(229, 236, 246, 0.92) 45%, rgba(245, 240, 231, 0.94) 100%);
+    }
+    .page-4 {
+      background: linear-gradient(180deg, rgba(245, 240, 231, 0.94) 0%, rgba(235, 240, 248, 0.9) 100%);
+    }
+    .page-5 {
+      background: linear-gradient(180deg, rgba(235, 240, 248, 0.9) 0%, rgba(224, 232, 245, 0.95) 100%);
+    }
+
+    /* Top Decorative Arch & Hanging Silver Diyas */
+    .top-ornament {
+      width: 100%;
+      max-width: 320px;
+      height: 58px;
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    }
+
+    /* Typography Hierarchy: Readable Handwriting Headings + Clean Serif Details */
+    .blessing-sanskrit {
+      font-family: 'Kohinoor Devanagari', 'Devanagari Sangam MN', 'Noto Serif Devanagari', serif;
+      font-size: 1.05rem;
+      color: var(--royal-blue);
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    .script-heading {
+      font-family: 'Snell Roundhand', 'Apple Chancery', 'Brush Script MT', 'Baskerville', cursive, serif;
+      font-style: italic;
+      font-weight: 500;
+      color: var(--royal-blue);
+      line-height: 1.22;
+      text-shadow: 0 1px 2px rgba(27, 54, 100, 0.08);
+    }
+
+    .script-names-lg {
+      font-size: 2.35rem;
+      margin: 6px 0;
+    }
+
+    .script-names-md {
+      font-size: 2.05rem;
+      margin: 4px 0;
+    }
+
+    .script-title {
+      font-size: 1.88rem;
+      margin-bottom: 6px;
+    }
+
+    .script-subtitle {
+      font-size: 1.62rem;
+      margin: 6px 0 4px 0;
+    }
+
+    .ampersand {
+      font-family: 'Baskerville', Georgia, serif;
+      font-style: italic;
+      font-size: 1.3rem;
+      color: var(--silver-dark);
+      display: block;
+      margin: 2px 0;
+    }
+
+    .serif-body {
+      font-family: 'Baskerville', 'Palatino Linotype', Georgia, serif;
+      font-size: 1.04rem;
+      line-height: 1.48;
+      color: var(--text-main);
+      max-width: 295px;
+    }
+
+    .serif-caps {
+      font-family: 'Baskerville', 'Palatino Linotype', Georgia, serif;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--soft-blue);
+      font-weight: 600;
+    }
+
+    .silver-divider {
+      width: 140px;
+      height: 16px;
+      margin: 10px auto;
+      display: block;
+    }
+
+    /* Monogram Crest on Page 1 */
+    .monogram-crest {
+      position: relative;
+      width: 118px;
+      height: 118px;
+      margin: 8px auto 14px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .monogram-crest svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .monogram-letters {
+      position: relative;
+      z-index: 2;
+      font-family: 'Snell Roundhand', 'Apple Chancery', 'Baskerville', cursive, serif;
+      font-style: italic;
+      font-size: 2.1rem;
+      color: var(--royal-blue);
+      padding-top: 4px;
+    }
+
+    /* Scroll Cue on Page 1 */
+    .scroll-cue {
+      margin-top: 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.76rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      opacity: 0.85;
+    }
+
+    .scroll-cue-arrow {
+      width: 16px;
+      height: 16px;
+      border-right: 1.5px solid var(--royal-blue);
+      border-bottom: 1.5px solid var(--royal-blue);
+      transform: rotate(45deg);
+      animation: gentleBounce 2s infinite;
+    }
+
+    @keyframes gentleBounce {
+      0%, 100% { transform: rotate(45deg) translate(0, 0); opacity: 0.5; }
+      50% { transform: rotate(45deg) translate(4px, 4px); opacity: 1; }
+    }
+
+    /* PAGE 2: Silver Foil Scratch Card */
+    .scratch-section {
+      margin-top: 10px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .scratch-card-container {
+      position: relative;
+      width: 268px;
+      height: 116px;
+      border-radius: 16px;
+      padding: 3px;
+      background: linear-gradient(135deg, #E6ECF5 0%, #9AA8BC 35%, #FFFFFF 50%, #8695AB 70%, #DCE3EE 100%);
+      box-shadow: 0 10px 26px rgba(27, 54, 100, 0.16), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+      margin-top: 6px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .scratch-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 13px;
+      background: linear-gradient(180deg, #FFFFFF 0%, #F5F7FA 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    .revealed-date-day {
+      font-size: 0.82rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--soft-blue);
+      font-weight: 600;
+    }
+
+    .revealed-date-main {
+      font-size: 1.72rem;
+      font-weight: 700;
+      color: var(--royal-blue);
+      letter-spacing: 0.06em;
+      margin: 2px 0;
+    }
+
+    .revealed-date-sub {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    #scratch-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 13px;
+      cursor: grab;
+      touch-action: none; /* Prevents page scrolling while scratching on iPhone & Android */
+      z-index: 4;
+      transition: opacity 0.65s ease;
+    }
+
+    #scratch-canvas.is-cleared {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .scratch-hint {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-style: italic;
+      min-height: 1.2em;
+    }
+
+    /* PAGE 3: Silver Jubilee Celebration Video */
+    .couple-stage-frame {
+      position: relative;
+      width: 260px;
+      height: 380px;
+      margin: 10px auto 6px auto;
+      border-radius: 130px 130px 22px 22px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #E8EEF5;
+      border: 2px solid var(--silver-mid);
+      box-shadow: 0 14px 34px rgba(27, 54, 100, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .couple-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: inherit;
+    }
+
+    /* PAGE 4: Venue Card & Google Maps Button */
+    .venue-card {
+      width: 100%;
+      max-width: 304px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid var(--silver-mid);
+      border-radius: 18px;
+      padding: 24px 20px;
+      margin-top: 10px;
+      box-shadow: 0 12px 30px rgba(27, 54, 100, 0.09);
+      position: relative;
+    }
+
+    .venue-icon-badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #F0F4FA 0%, #DAE2F0 100%);
+      border: 1px solid var(--silver-mid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px auto;
+      color: var(--royal-blue);
+    }
+
+    .venue-name {
+      font-size: 1.34rem;
+      font-weight: 700;
+      color: var(--royal-blue);
+      margin-bottom: 6px;
+    }
+
+    .venue-address {
+      font-size: 1.02rem;
+      line-height: 1.45;
+      color: var(--text-main);
+      margin-bottom: 18px;
+    }
+
+    .btn-maps {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--royal-blue) 0%, var(--deep-navy) 100%);
+      color: #FFFFFF;
+      font-family: inherit;
+      font-size: 1.02rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      box-shadow: 0 6px 16px rgba(27, 54, 100, 0.25);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-maps:hover, .btn-maps:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(27, 54, 100, 0.34);
+    }
+
+    .btn-maps:active {
+      transform: translateY(0);
+    }
+
+    /* PAGE 5: Closing Sign-off & Wishes Block */
+    .wishes-card {
+      width: 100%;
+      max-width: 308px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--silver-mid);
+      border-radius: 18px;
+      padding: 18px 18px 16px 18px;
+      margin-top: 14px;
+      box-shadow: 0 12px 28px rgba(27, 54, 100, 0.1);
+      text-align: left;
+    }
+
+    .wishes-card-header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .form-field {
+      margin-bottom: 10px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--royal-blue);
+      margin-bottom: 3px;
+      letter-spacing: 0.03em;
+    }
+
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--silver-mid);
+      background: #FAFBFD;
+      font-family: inherit;
+      font-size: 0.98rem;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+      border-color: var(--royal-blue);
+      box-shadow: 0 0 0 3px rgba(27, 54, 100, 0.1);
+      background: #FFFFFF;
+    }
+
+    .form-textarea {
+      resize: none;
+      height: 78px;
+      line-height: 1.38;
+    }
+
+    .char-counter {
+      display: block;
+      text-align: right;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .btn-send-blessing {
+      width: 100%;
+      padding: 11px 16px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--royal-blue) 0%, var(--deep-navy) 100%);
+      color: #FFFFFF;
+      font-family: inherit;
+      font-size: 1.02rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(27, 54, 100, 0.22);
+      transition: background 0.25s ease, transform 0.2s ease;
+    }
+
+    .btn-send-blessing:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-send-blessing:disabled {
+      opacity: 0.7;
+      cursor: default;
+      transform: none;
+    }
+
+    .btn-send-blessing.sent-state {
+      background: linear-gradient(135deg, #1E5E4A 0%, #144536 100%);
+    }
+
+    .form-feedback {
+      margin-top: 8px;
+      font-size: 0.88rem;
+      text-align: center;
+      min-height: 1.25em;
+      font-weight: 600;
+    }
+
+    .form-feedback.error {
+      color: #9E2A2B;
+    }
+
+    .form-feedback.success {
+      color: var(--royal-blue);
+    }
+
+    .private-link-row {
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .private-link-row a {
+      color: var(--soft-blue);
+      text-decoration: none;
+      border-bottom: 1px dotted var(--silver-dark);
+    }
+
+    /* MOTION: Soft Line-by-Line Reveal as Each Page Enters View */
+    .reveal-line {
+      opacity: 0;
+      transform: translateY(14px);
+      transition:
+        opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+      transition-delay: var(--line-delay, 0ms);
+      will-change: opacity, transform;
+    }
+
+    .invite-page.in-view .reveal-line {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Respect Phones with Reduced Motion Settings */
+    @media (prefers-reduced-motion: reduce) {
+      html, body {
+        scroll-behavior: auto;
+      }
+      .reveal-line {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+      }
+      .floating-lotus-dock,
+      .scroll-cue-arrow {
+        animation: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="desktop-stage">
+    <main class="phone-viewport" id="invite-root">
+      <!-- Subtle Watercolor & Silver Lattice Backdrop -->
+      <div class="ambient-texture" aria-hidden="true"></div>
+
+      <!-- Classical Carved Pillars & Floral Vines Along Left & Right Edges -->
+      <div class="architectural-frame" aria-hidden="true">
+        <svg class="pillar-side" viewBox="0 0 28 844" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="pGradL" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#D5DCE6"/>
+              <stop offset="60%" stop-color="#F2EDE4"/>
+              <stop offset="100%" stop-color="#9AA8BC"/>
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="18" height="844" fill="url(#pGradL)" opacity="0.65"/>
+          <line x1="6" y1="0" x2="6" y2="844" stroke="#8E9BAE" stroke-width="0.7" opacity="0.6"/>
+          <line x1="12" y1="0" x2="12" y2="844" stroke="#8E9BAE" stroke-width="0.7" opacity="0.6"/>
+          <line x1="18" y1="0" x2="18" y2="844" stroke="#1B3664" stroke-width="0.8" opacity="0.35"/>
+          <circle cx="20" cy="110" r="3.5" fill="#1B3664" opacity="0.45"/>
+          <circle cx="16" cy="122" r="2.5" fill="#9AA8BC" opacity="0.7"/>
+          <circle cx="21" cy="280" r="3.5" fill="#1B3664" opacity="0.45"/>
+          <circle cx="17" cy="294" r="2.5" fill="#9AA8BC" opacity="0.7"/>
+          <circle cx="20" cy="480" r="3.5" fill="#1B3664" opacity="0.45"/>
+          <circle cx="21" cy="670" r="3.5" fill="#1B3664" opacity="0.45"/>
+        </svg>
+
+        <svg class="pillar-side" viewBox="0 0 28 844" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="pGradR" x1="100%" y1="0%" x2="0%" y2="0%">
+              <stop offset="0%" stop-color="#D5DCE6"/>
+              <stop offset="60%" stop-color="#F2EDE4"/>
+              <stop offset="100%" stop-color="#9AA8BC"/>
+            </linearGradient>
+          </defs>
+          <rect x="10" y="0" width="18" height="844" fill="url(#pGradR)" opacity="0.65"/>
+          <line x1="22" y1="0" x2="22" y2="844" stroke="#8E9BAE" stroke-width="0.7" opacity="0.6"/>
+          <line x1="16" y1="0" x2="16" y2="844" stroke="#8E9BAE" stroke-width="0.7" opacity="0.6"/>
+          <line x1="10" y1="0" x2="10" y2="844" stroke="#1B3664" stroke-width="0.8" opacity="0.35"/>
+          <circle cx="8" cy="140" r="3.5" fill="#1B3664" opacity="0.45"/>
+          <circle cx="12" cy="152" r="2.5" fill="#9AA8BC" opacity="0.7"/>
+          <circle cx="7" cy="320" r="3.5" fill="#1B3664" opacity="0.45"/>
+          <circle cx="8" cy="510" r="3.5" fill="#1B3664" opacity="0.45"/>
+          <circle cx="7" cy="700" r="3.5" fill="#1B3664" opacity="0.45"/>
+        </svg>
+      </div>
+
+      <!-- Canvas for Gentle Falling Flowers (Page 1) & 3-Second Rose Petal Shower (Page 2 Scratch Reveal) -->
+      <canvas id="petal-canvas" aria-hidden="true"></canvas>
+
+      <!-- COMMON THREAD: One Silver Lotus Stays Visible on Every Page, Gently Floating -->
+      <div class="floating-lotus-dock" aria-hidden="true" title="Silver Jubilee Lotus">
+        <svg viewBox="0 0 120 82" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="lotusSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FFFFFF"/>
+              <stop offset="40%" stop-color="#DCE3EE"/>
+              <stop offset="75%" stop-color="#9BA8BC"/>
+              <stop offset="100%" stop-color="#F5F7FA"/>
+            </linearGradient>
+            <linearGradient id="lotusBlueAccent" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#E6ECF5"/>
+              <stop offset="100%" stop-color="#284B82"/>
+            </linearGradient>
+          </defs>
+          <path d="M60,64 C35,64 12,54 6,40 C22,38 42,46 60,64 Z" fill="url(#lotusBlueAccent)" opacity="0.75" stroke="#1B3664" stroke-width="0.9"/>
+          <path d="M60,64 C85,64 108,54 114,40 C98,38 78,46 60,64 Z" fill="url(#lotusBlueAccent)" opacity="0.75" stroke="#1B3664" stroke-width="0.9"/>
+          <path d="M60,64 C38,52 20,32 22,16 C38,22 50,38 60,64 Z" fill="url(#lotusSilver)" stroke="#526582" stroke-width="1"/>
+          <path d="M60,64 C82,52 100,32 98,16 C82,22 70,38 60,64 Z" fill="url(#lotusSilver)" stroke="#526582" stroke-width="1"/>
+          <path d="M60,64 C44,44 36,22 42,8 C52,18 57,36 60,64 Z" fill="url(#lotusSilver)" stroke="#435675" stroke-width="1"/>
+          <path d="M60,64 C76,44 84,22 78,8 C68,18 63,36 60,64 Z" fill="url(#lotusSilver)" stroke="#435675" stroke-width="1"/>
+          <path d="M60,65 C49,42 49,18 60,3 C71,18 71,42 60,65 Z" fill="url(#lotusSilver)" stroke="#1B3664" stroke-width="1.1"/>
+          <circle cx="60" cy="69" r="3" fill="#9BA8BC"/>
+        </svg>
+      </div>
+
+      <!-- =================================================================
+           PAGE 1: OPENING (Blessing, Monogram N & R, Navneet & Ruby, 25 Years Together, New Delhi — NO DATE)
+           ================================================================= -->
+      <section class="invite-page page-1 in-view" id="page-opening" data-page="1">
+        <svg class="top-ornament reveal-line" style="--line-delay: 40ms;" viewBox="0 0 320 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M10,8 Q85,38 160,12 Q235,38 310,8" fill="none" stroke="#9AA8BC" stroke-width="1.2" stroke-dasharray="3,3"/>
+          <line x1="48" y1="0" x2="48" y2="36" stroke="#7E8B9F" stroke-width="1.1"/>
+          <path d="M36,36 Q48,48 60,36 Z" fill="#9AA8BC" stroke="#1B3664" stroke-width="0.9"/>
+          <path d="M48,25 C45,30 46,34 48,35 C50,34 51,30 48,25 Z" fill="#F2B84B"/>
+          <line x1="272" y1="0" x2="272" y2="36" stroke="#7E8B9F" stroke-width="1.1"/>
+          <path d="M260,36 Q272,48 284,36 Z" fill="#9AA8BC" stroke="#1B3664" stroke-width="0.9"/>
+          <path d="M272,25 C269,30 270,34 272,35 C274,34 275,30 272,25 Z" fill="#F2B84B"/>
+          <circle cx="160" cy="12" r="4.5" fill="#1B3664"/>
+          <circle cx="148" cy="15" r="3" fill="#BEC6D4"/>
+          <circle cx="172" cy="15" r="3" fill="#BEC6D4"/>
+        </svg>
+
+        <p class="blessing-sanskrit reveal-line" style="--line-delay: 110ms;">॥ श्री गणेशाय नमः ॥</p>
+
+        <!-- Monogram "N & R" inside Silver Wreath Crest -->
+        <div class="monogram-crest reveal-line" style="--line-delay: 190ms;">
+          <svg viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="ringSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#DCE3EE"/>
+                <stop offset="50%" stop-color="#8A99AD"/>
+                <stop offset="100%" stop-color="#1B3664"/>
+              </linearGradient>
+            </defs>
+            <circle cx="65" cy="65" r="56" fill="#FAF7F2" stroke="url(#ringSilver)" stroke-width="2.2"/>
+            <circle cx="65" cy="65" r="50" fill="none" stroke="#9AA8BC" stroke-width="0.9" stroke-dasharray="3,3"/>
+            <path d="M20,65 C20,36 40,15 65,12" fill="none" stroke="#1B3664" stroke-width="1.2" opacity="0.55"/>
+            <path d="M110,65 C110,94 90,115 65,118" fill="none" stroke="#1B3664" stroke-width="1.2" opacity="0.55"/>
+            <circle cx="65" cy="9" r="3" fill="#1B3664"/>
+            <circle cx="65" cy="121" r="3" fill="#1B3664"/>
+          </svg>
+          <span class="monogram-letters">N &amp; R</span>
+        </div>
+
+        <h1 class="script-heading script-names-lg reveal-line" style="--line-delay: 270ms;">
+          Navneet &amp; Ruby
+        </h1>
+
+        <svg class="silver-divider reveal-line" style="--line-delay: 340ms;" viewBox="0 0 140 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <line x1="8" y1="8" x2="56" y2="8" stroke="#9AA8BC" stroke-width="1"/>
+          <polygon points="70,3 75,8 70,13 65,8" fill="#1B3664"/>
+          <line x1="84" y1="8" x2="132" y2="8" stroke="#9AA8BC" stroke-width="1"/>
+        </svg>
+
+        <p class="serif-caps reveal-line" style="--line-delay: 410ms;">25 Years Together</p>
+        <p class="serif-body reveal-line" style="--line-delay: 480ms; margin-top: 6px; font-style: italic; color: var(--text-muted);">
+          New Delhi
+        </p>
+
+        <div class="scroll-cue reveal-line" style="--line-delay: 560ms;" aria-hidden="true">
+          <span>Scroll up to begin</span>
+          <div class="scroll-cue-arrow"></div>
+        </div>
+      </section>
+
+      <!-- =================================================================
+           PAGE 2: INVITATION & SILVER FOIL SCRATCH CARD DATE REVEAL
+           ================================================================= -->
+      <section class="invite-page page-2" id="page-invitation" data-page="2">
+        <p class="blessing-sanskrit reveal-line" style="--line-delay: 60ms;">॥ श्री गणेशाय नमः ॥</p>
+
+        <p class="serif-body reveal-line" style="--line-delay: 140ms;">
+          With the blessings of the Almighty, we joyfully invite you to celebrate 25 years of our togetherness.
+        </p>
+
+        <div class="reveal-line" style="--line-delay: 230ms; margin: 12px 0 8px 0;">
+          <h2 class="script-heading script-names-md">Navneet Goel</h2>
+          <span class="ampersand">&amp;</span>
+          <h2 class="script-heading script-names-md">Ruby Goel</h2>
+        </div>
+
+        <div class="scratch-section reveal-line" style="--line-delay: 330ms;">
+          <p class="script-heading script-subtitle">Save the date</p>
+
+          <div class="scratch-card-container" id="scratch-card-box">
+            <div class="scratch-card-inner" aria-live="polite">
+              <span class="revealed-date-day">Wednesday</span>
+              <div class="revealed-date-main">25 • 11 • 2026</div>
+              <span class="revealed-date-sub">25 November 2026 • Silver Jubilee</span>
+            </div>
+
+            <canvas id="scratch-canvas" width="262" height="110" aria-label="Scratch to reveal the anniversary date"></canvas>
+          </div>
+
+          <p class="scratch-hint" id="scratch-status-text">Rub gently with your finger or mouse</p>
+        </div>
+      </section>
+
+      <!-- =================================================================
+           PAGE 3: CELEBRATION DETAILS & SILVER JUBILEE VIDEO
+           ================================================================= -->
+      <section class="invite-page page-3" id="page-ceremony" data-page="3">
+        <p class="serif-caps reveal-line" style="--line-delay: 60ms; margin-bottom: 4px;">Celebration Details</p>
+
+        <h2 class="script-heading script-title reveal-line" style="--line-delay: 130ms;">
+          Silver Jubilee Celebration
+        </h2>
+
+        <div class="ceremony-details-box reveal-line" style="--line-delay: 210ms;">
+          <p class="ceremony-datetime">Wednesday, 25 November 2026 • 7 PM onwards</p>
+          <p class="ceremony-venue-short">Golden Dreams Banquets, Block K, Kalkaji, New Delhi</p>
+        </div>
+
+        <!-- Animated Anniversary Video of Navneet & Ruby Under the Arch -->
+        <div class="couple-stage-frame reveal-line" style="--line-delay: 300ms;">
+          <video
+            class="couple-video"
+            id="couple-anniversary-video"
+            autoplay
+            loop
+            muted
+            playsinline
+            preload="auto"
+            poster="og-preview.png"
+            aria-label="Navneet &amp; Ruby Goel Silver Jubilee celebration video"
+          >
+            <source src="couple-video.mp4" type="video/mp4">
+            <source src="file:///Users/piyushgoel/.gemini/antigravity/brain/3beffddf-63cb-48c1-a4c4-2f5c06fbac73/.user_uploaded/media_1794912736318_965aa237.mp4" type="video/mp4">
+            Your browser does not support HTML5 video.
+          </video>
+        </div>
+      </section>
+
+      <!-- =================================================================
+           PAGE 4: VENUE & GOOGLE MAPS NAVIGATION
+           ================================================================= -->
+      <section class="invite-page page-4" id="page-venue" data-page="4">
+        <p class="serif-caps reveal-line" style="--line-delay: 60ms;">Where We Celebrate</p>
+        <h2 class="script-heading script-title reveal-line" style="--line-delay: 130ms;">The Venue</h2>
+
+        <div class="venue-card reveal-line" style="--line-delay: 220ms;">
+          <div class="venue-icon-badge" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+          </div>
+
+          <h3 class="venue-name">Golden Dreams Banquets</h3>
+          <p class="venue-address">
+            Block K, Kalkaji<br />
+            New Delhi
+          </p>
+
+          <a
+            class="btn-maps"
+            href="https://www.google.com/maps/search/?api=1&query=Golden+Dreams+Banquets+Block+K+Kalkaji+New+Delhi"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+            </svg>
+            Open in Google Maps
+          </a>
+        </div>
+      </section>
+
+      <!-- =================================================================
+           PAGE 5: LAST PAGE (Awaiting your presence, With love, Family line, Wishes Block)
+           ================================================================= -->
+      <section class="invite-page page-5" id="page-blessings" data-page="5">
+        <h2 class="script-heading script-title reveal-line" style="--line-delay: 60ms;">
+          Awaiting your presence
+        </h2>
+
+        <p class="serif-body reveal-line" style="--line-delay: 140ms; font-size: 1.14rem; font-weight: 600; color: var(--royal-blue);">
+          With love, Navneet &amp; Ruby Goel
+        </p>
+
+        <p class="serif-body reveal-line" style="--line-delay: 210ms; color: var(--text-muted); font-style: italic;">
+          The Goel family
+        </p>
+
+        <!-- WISHES BLOCK -->
+        <div class="wishes-card reveal-line" style="--line-delay: 290ms;">
+          <div class="wishes-card-header">
+            <h3 class="script-heading script-subtitle" style="margin: 0;">Send your blessings</h3>
+          </div>
+
+          <form id="blessing-form" novalidate>
+            <div class="form-field">
+              <label class="form-label" for="guest-name">Your Name</label>
+              <input
+                type="text"
+                id="guest-name"
+                name="name"
+                class="form-input"
+                placeholder="Enter your name"
+                maxlength="80"
+                required
+              />
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="guest-message">Your Blessing</label>
+              <textarea
+                id="guest-message"
+                name="message"
+                class="form-textarea"
+                placeholder="Write your wishes for Navneet &amp; Ruby..."
+                maxlength="500"
+                required
+              ></textarea>
+              <span class="char-counter" id="char-count">0 / 500</span>
+            </div>
+
+            <button type="submit" class="btn-send-blessing" id="btn-submit-blessing">
+              Send
+            </button>
+            <div class="form-feedback" id="blessing-feedback" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+
+        <div class="private-link-row reveal-line" style="--line-delay: 370ms;">
+          <a href="/blessings">Family login: Read blessings</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      /* =====================================================================
+         1. LINE-BY-LINE SCROLL REVEAL OBSERVER
+         ===================================================================== */
+      const pages = document.querySelectorAll('.invite-page');
+      let activePageNumber = 1;
+
+      if ('IntersectionObserver' in window) {
+        const pageObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('in-view');
+                const pageNum = parseInt(entry.target.getAttribute('data-page') || '1', 10);
+                activePageNumber = pageNum;
+              }
+            });
+          },
+          { threshold: 0.28 }
+        );
+        pages.forEach((p) => pageObserver.observe(p));
+      } else {
+        pages.forEach((p) => p.classList.add('in-view'));
+      }
+
+      /* =====================================================================
+         2. GENTLE FALLING FLOWERS (PAGE 1) & 3-SECOND ROSE PETAL SHOWER (PAGE 2)
+         ===================================================================== */
+      const petalCanvas = document.getElementById('petal-canvas');
+      const pCtx = petalCanvas.getContext('2d');
+      let cw = 390;
+      let ch = window.innerHeight;
+
+      function resizePetalCanvas() {
+        cw = Math.min(window.innerWidth, 390);
+        ch = window.innerHeight;
+        petalCanvas.width = cw;
+        petalCanvas.height = ch;
+      }
+      resizePetalCanvas();
+      window.addEventListener('resize', resizePetalCanvas);
+
+      const ambientPetals = [];
+      const burstPetals = [];
+
+      function createAmbientPetal(randomY) {
+        const palette = [
+          'rgba(214, 222, 235, 0.78)',
+          'rgba(184, 198, 218, 0.72)',
+          'rgba(232, 182, 194, 0.68)',
+          'rgba(40, 75, 130, 0.38)'
+        ];
+        return {
+          x: Math.random() * cw,
+          y: randomY ? Math.random() * ch : -18,
+          r: 4 + Math.random() * 5,
+          vy: 0.45 + Math.random() * 0.65,
+          vx: (Math.random() - 0.5) * 0.45,
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.02,
+          color: palette[Math.floor(Math.random() * palette.length)]
+        };
+      }
+
+      if (!prefersReducedMotion) {
+        for (let i = 0; i < 18; i++) {
+          ambientPetals.push(createAmbientPetal(true));
+        }
+      }
+
+      function triggerRosePetalShower() {
+        if (prefersReducedMotion) return;
+        const cardBox = document.getElementById('scratch-card-box');
+        const rect = cardBox ? cardBox.getBoundingClientRect() : { top: ch * 0.55, height: 110 };
+        const viewportRect = petalCanvas.getBoundingClientRect();
+        const cardCenterX = cw / 2;
+        const cardCenterY = rect.top - viewportRect.top + rect.height / 2;
+
+        const roseColors = [
+          '#D94E67',
+          '#E87A90',
+          '#F2A2B3',
+          '#C43650',
+          '#D4DCE8'
+        ];
+
+        const now = performance.now();
+        // 1) Shower from around the card
+        for (let i = 0; i < 42; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1.2 + Math.random() * 3.6;
+          burstPetals.push({
+            x: cardCenterX + (Math.random() - 0.5) * 180,
+            y: cardCenterY + (Math.random() - 0.5) * 60,
+            vx: Math.cos(angle) * speed * 0.7,
+            vy: Math.sin(angle) * speed - 1.2,
+            gravity: 0.045,
+            r: 5 + Math.random() * 6,
+            angle: Math.random() * Math.PI * 2,
+            spin: (Math.random() - 0.5) * 0.08,
+            color: roseColors[Math.floor(Math.random() * roseColors.length)],
+            born: now,
+            ttl: 3000
+          });
+        }
+
+        // 2) Shower from the top of the screen
+        for (let i = 0; i < 48; i++) {
+          burstPetals.push({
+            x: Math.random() * cw,
+            y: -15 - Math.random() * 140,
+            vx: (Math.random() - 0.5) * 1.4,
+            vy: 1.8 + Math.random() * 2.6,
+            gravity: 0.02,
+            r: 5 + Math.random() * 6,
+            angle: Math.random() * Math.PI * 2,
+            spin: (Math.random() - 0.5) * 0.07,
+            color: roseColors[Math.floor(Math.random() * roseColors.length)],
+            born: now,
+            ttl: 3000
+          });
+        }
+      }
+
+      function drawPetalShape(ctx, x, y, r, angle, color, alpha) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, -r);
+        ctx.bezierCurveTo(r * 0.9, -r * 0.5, r * 0.9, r * 0.7, 0, r);
+        ctx.bezierCurveTo(-r * 0.9, r * 0.7, -r * 0.9, -r * 0.5, 0, -r);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function animatePetals(now) {
+        pCtx.clearRect(0, 0, cw, ch);
+
+        if (activePageNumber === 1) {
+          for (let i = 0; i < ambientPetals.length; i++) {
+            const p = ambientPetals[i];
+            p.y += p.vy;
+            p.x += p.vx + Math.sin(p.y * 0.02) * 0.25;
+            p.angle += p.spin;
+            if (p.y > ch + 16) {
+              ambientPetals[i] = createAmbientPetal(false);
+            }
+            drawPetalShape(pCtx, p.x, p.y, p.r, p.angle, p.color, 0.85);
+          }
+        }
+
+        for (let i = burstPetals.length - 1; i >= 0; i--) {
+          const b = burstPetals[i];
+          const age = now - b.born;
+          if (age >= b.ttl) {
+            burstPetals.splice(i, 1);
+            continue;
+          }
+          b.vy += b.gravity;
+          b.x += b.vx + Math.sin(age * 0.008) * 0.35;
+          b.y += b.vy;
+          b.angle += b.spin;
+          const fade = age > 2300 ? Math.max(0, 1 - (age - 2300) / 700) : 1;
+          drawPetalShape(pCtx, b.x, b.y, b.r, b.angle, b.color, fade);
+        }
+
+        if (!prefersReducedMotion) {
+          requestAnimationFrame(animatePetals);
+        }
+      }
+
+      if (!prefersReducedMotion) {
+        requestAnimationFrame(animatePetals);
+      }
+
+      /* =====================================================================
+         3. SILVER FOIL SCRATCH CARD (Touch & Mouse, No Scroll While Scratching)
+         ===================================================================== */
+      const scratchCanvas = document.getElementById('scratch-canvas');
+      const sCtx = scratchCanvas.getContext('2d', { willReadFrequently: true });
+      const statusText = document.getElementById('scratch-status-text');
+      let isDrawing = false;
+      let isRevealed = false;
+
+      function paintSilverFoil() {
+        const w = scratchCanvas.width;
+        const h = scratchCanvas.height;
+        sCtx.globalCompositeOperation = 'source-over';
+
+        const foilGrad = sCtx.createLinearGradient(0, 0, w, h);
+        foilGrad.addColorStop(0, '#D4DCE8');
+        foilGrad.addColorStop(0.25, '#F3F6FA');
+        foilGrad.addColorStop(0.5, '#A7B4C8');
+        foilGrad.addColorStop(0.75, '#E6ECF5');
+        foilGrad.addColorStop(1, '#8F9FB5');
+
+        sCtx.fillStyle = foilGrad;
+        sCtx.fillRect(0, 0, w, h);
+
+        for (let i = 0; i < 120; i++) {
+          sCtx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.35)' : 'rgba(27,54,100,0.08)';
+          sCtx.fillRect(Math.random() * w, Math.random() * h, 2, 1);
+        }
+
+        sCtx.strokeStyle = 'rgba(27, 54, 100, 0.35)';
+        sCtx.lineWidth = 1;
+        sCtx.strokeRect(6, 6, w - 12, h - 12);
+
+        sCtx.fillStyle = '#1B3664';
+        sCtx.font = '600 17px Baskerville, Georgia, serif';
+        sCtx.textAlign = 'center';
+        sCtx.textBaseline = 'middle';
+        sCtx.fillText('Scratch to reveal the date', w / 2, h / 2);
+      }
+
+      paintSilverFoil();
+
+      function getScratchCoords(e) {
+        const rect = scratchCanvas.getBoundingClientRect();
+        const scaleX = scratchCanvas.width / rect.width;
+        const scaleY = scratchCanvas.height / rect.height;
+        let clientX, clientY;
+        if (e.touches && e.touches.length > 0) {
+          clientX = e.touches[0].clientX;
+          clientY = e.touches[0].clientY;
+        } else {
+          clientX = e.clientX;
+          clientY = e.clientY;
+        }
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY
+        };
+      }
+
+      function scratchAt(x, y) {
+        if (isRevealed) return;
+        sCtx.globalCompositeOperation = 'destination-out';
+        sCtx.beginPath();
+        sCtx.arc(x, y, 22, 0, Math.PI * 2);
+        sCtx.fill();
+      }
+
+      function checkScratchPercentage() {
+        if (isRevealed) return;
+        const imgData = sCtx.getImageData(0, 0, scratchCanvas.width, scratchCanvas.height).data;
+        let transparentPixels = 0;
+        const totalSampled = imgData.length / 16;
+        for (let i = 3; i < imgData.length; i += 16) {
+          if (imgData[i] < 128) {
+            transparentPixels++;
+          }
+        }
+        const clearedRatio = transparentPixels / totalSampled;
+        if (clearedRatio >= 0.45) {
+          isRevealed = true;
+          scratchCanvas.classList.add('is-cleared');
+          if (statusText) {
+            statusText.textContent = '✨ Wednesday, 25 November 2026 ✨';
+          }
+          triggerRosePetalShower();
+        }
+      }
+
+      scratchCanvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        const pt = getScratchCoords(e);
+        scratchAt(pt.x, pt.y);
+        checkScratchPercentage();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDrawing || isRevealed) return;
+        const pt = getScratchCoords(e);
+        scratchAt(pt.x, pt.y);
+        checkScratchPercentage();
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDrawing = false;
+      });
+
+      scratchCanvas.addEventListener(
+        'touchstart',
+        (e) => {
+          if (isRevealed) return;
+          e.preventDefault();
+          isDrawing = true;
+          const pt = getScratchCoords(e);
+          scratchAt(pt.x, pt.y);
+          checkScratchPercentage();
+        },
+        { passive: false }
+      );
+
+      scratchCanvas.addEventListener(
+        'touchmove',
+        (e) => {
+          if (!isDrawing || isRevealed) return;
+          e.preventDefault();
+          const pt = getScratchCoords(e);
+          scratchAt(pt.x, pt.y);
+          checkScratchPercentage();
+        },
+        { passive: false }
+      );
+
+      scratchCanvas.addEventListener('touchend', () => {
+        isDrawing = false;
+      });
+
+      /* =====================================================================
+         4. WISHES BLOCK (Database Persistence + Validation)
+         ===================================================================== */
+      const blessingForm = document.getElementById('blessing-form');
+      const nameInput = document.getElementById('guest-name');
+      const msgInput = document.getElementById('guest-message');
+      const charCount = document.getElementById('char-count');
+      const submitBtn = document.getElementById('btn-submit-blessing');
+      const feedbackEl = document.getElementById('blessing-feedback');
+
+      msgInput.addEventListener('input', () => {
+        const len = msgInput.value.length;
+        charCount.textContent = len + ' / 500';
+      });
+
+      blessingForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        feedbackEl.textContent = '';
+        feedbackEl.className = 'form-feedback';
+
+        const name = (nameInput.value || '').trim();
+        const message = (msgInput.value || '').trim();
+
+        if (!name) {
+          feedbackEl.textContent = 'Please enter your name.';
+          feedbackEl.classList.add('error');
+          nameInput.focus();
+          return;
+        }
+
+        if (!message) {
+          feedbackEl.textContent = 'Please enter a blessing message.';
+          feedbackEl.classList.add('error');
+          msgInput.focus();
+          return;
+        }
+
+        if (message.length > 500) {
+          feedbackEl.textContent = 'Message must be 500 characters or fewer.';
+          feedbackEl.classList.add('error');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+
+        try {
+          const res = await fetch('/api/blessings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, message })
+          });
+
+          if (!res.ok && res.status !== 404) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Could not save blessing.');
+          }
+
+          // If on static GitHub Pages or server returned 201/200, record locally
+          try {
+            const stored = JSON.parse(localStorage.getItem('guest_blessings') || '[]');
+            stored.push({ name, message, date: new Date().toLocaleDateString() });
+            localStorage.setItem('guest_blessings', JSON.stringify(stored));
+          } catch (_) {}
+
+          submitBtn.textContent = 'Blessing sent';
+          submitBtn.classList.add('sent-state');
+          feedbackEl.textContent = 'Blessing sent! Thank you for your love & wishes.';
+          feedbackEl.classList.add('success');
+          msgInput.value = '';
+          charCount.textContent = '0 / 500';
+
+          setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Send';
+            submitBtn.classList.remove('sent-state');
+          }, 3500);
+        } catch (err) {
+          // Graceful fallback for static hosting
+          try {
+            const stored = JSON.parse(localStorage.getItem('guest_blessings') || '[]');
+            stored.push({ name, message, date: new Date().toLocaleDateString() });
+            localStorage.setItem('guest_blessings', JSON.stringify(stored));
+            submitBtn.textContent = 'Blessing sent';
+            submitBtn.classList.add('sent-state');
+            feedbackEl.textContent = 'Blessing recorded! Thank you for your warm wishes.';
+            feedbackEl.classList.add('success');
+            msgInput.value = '';
+            charCount.textContent = '0 / 500';
+            setTimeout(() => {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Send';
+              submitBtn.classList.remove('sent-state');
+            }, 3500);
+            return;
+          } catch (_) {}
+
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send';
+          feedbackEl.textContent = err.message || 'Unable to send right now. Please try again.';
+          feedbackEl.classList.add('error');
+        }
+      });
+
+      /* Autoplay video helper across mobile devices */
+      const coupleVid = document.getElementById('couple-anniversary-video');
+      if (coupleVid) {
+        coupleVid.play().catch(() => {
+          const startPlayback = () => {
+            coupleVid.play();
+            window.removeEventListener('touchstart', startPlayback);
+            window.removeEventListener('click', startPlayback);
+            window.removeEventListener('scroll', startPlayback);
+          };
+          window.addEventListener('touchstart', startPlayback, { passive: true, once: true });
+          window.addEventListener('click', startPlayback, { passive: true, once: true });
+          window.addEventListener('scroll', startPlayback, { passive: true, once: true });
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
