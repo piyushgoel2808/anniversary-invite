@@ -31,36 +31,45 @@
       <p class="serif-caps">25 Years Together</p>
       <h1 class="script-heading auth-title">Navneet &amp; Ruby</h1>
       <p class="auth-sub">
-        Welcome to our private Silver Jubilee photo album. Sign in with your guest username and registered mobile number.
+        Welcome to our private Silver Jubilee photo album. Sign in with your first name and registered 10-digit mobile number.
       </p>
+
+      <div class="login-guide-box">
+        <div class="login-guide-title">How to Sign In (Example)</div>
+        <div><strong>Username:</strong> Your first name only &mdash; e.g. <code>rahul</code></div>
+        <div><strong>Password:</strong> Your 10-digit mobile &mdash; e.g. <code>9876543210</code></div>
+      </div>
 
       <form id="guest-login-form" novalidate>
         <div class="form-group">
-          <label class="form-label" for="login-username">Guest Username</label>
+          <label class="form-label" for="login-username">Guest Username (First Name)</label>
           <input
             type="text"
             id="login-username"
             class="form-input"
-            placeholder="e.g. rahul123"
+            placeholder="e.g. rahul"
             autocomplete="username"
+            autocapitalize="none"
             required
           />
+          <div class="form-hint">Enter your first name (uppercase or lowercase both work).</div>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="login-mobile">Registered Mobile Number</label>
+          <label class="form-label" for="login-mobile">Registered Mobile Number (Password)</label>
           <div class="input-wrap">
             <input
               type="password"
               id="login-mobile"
               class="form-input"
-              placeholder="10-digit mobile number"
+              placeholder="e.g. 9876543210"
               inputmode="tel"
               autocomplete="current-password"
               required
             />
             <button type="button" class="toggle-pw" id="btn-toggle-pw">Show</button>
           </div>
+          <div class="form-hint">Enter your 10-digit mobile number registered with the Goel family.</div>
         </div>
 
         <button type="submit" class="btn btn-primary" style="width:100%;" id="btn-login-submit">

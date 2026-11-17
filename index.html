@@ -148,14 +148,12 @@
       }
     }
 
-    /* Each Page Fills the Phone Screen and Scrolls Naturally Upward */
+    /* Natural flowing scroll rhythm across sections (eliminates giant blank gaps between pages) */
     .invite-page {
       position: relative;
       z-index: 5;
       width: 100%;
-      min-height: 100vh;
-      min-height: 100dvh;
-      padding: 46px 34px 74px 34px;
+      padding: 44px 34px 48px 34px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -166,6 +164,9 @@
 
     /* Page specific subtle hand-painted washes (ivory, cream, silver shimmer, deep blue accents) */
     .page-1 {
+      min-height: min(92dvh, 690px);
+      padding-top: 36px;
+      padding-bottom: 52px;
       background: linear-gradient(180deg, rgba(250, 247, 242, 0.92) 0%, rgba(244, 239, 230, 0.82) 100%);
     }
     .page-2 {
@@ -178,6 +179,7 @@
       background: linear-gradient(180deg, rgba(245, 240, 231, 0.94) 0%, rgba(235, 240, 248, 0.9) 100%);
     }
     .page-5 {
+      padding-bottom: 92px;
       background: linear-gradient(180deg, rgba(235, 240, 248, 0.9) 0%, rgba(224, 232, 245, 0.95) 100%);
     }
 
@@ -898,7 +900,7 @@
           </a>
 
           <p class="memories-access-note">
-            Private family album &bull; Sign in with your guest username &amp; registered mobile number
+            Private family album &bull; Sign in with your first name &amp; 10-digit mobile number
           </p>
           <div class="memories-status-msg" id="memories-status-msg" role="status" aria-live="polite"></div>
         </div>
@@ -927,7 +929,7 @@
               }
             });
           },
-          { threshold: 0.28 }
+          { threshold: 0.18 }
         );
         pages.forEach((p) => pageObserver.observe(p));
       } else {
