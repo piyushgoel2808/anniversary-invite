@@ -722,6 +722,26 @@
       color: var(--royal-blue);
     }
 
+    .venue-datetime-block {
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--silver-light);
+    }
+
+    .venue-date {
+      font-size: 1.08rem;
+      font-weight: 700;
+      color: var(--royal-blue);
+      line-height: 1.35;
+    }
+
+    .venue-time {
+      font-size: 0.96rem;
+      color: var(--soft-blue);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
     .venue-name {
       font-size: 1.34rem;
       font-weight: 700;
@@ -1135,22 +1155,17 @@
       </section>
 
       <!-- =================================================================
-           PAGE 3: CELEBRATION DETAILS & SILVER JUBILEE VIDEO
+           PAGE 3: SILVER JUBILEE COUPLE PORTRAIT STAGE (Clean, Uncluttered)
            ================================================================= -->
       <section class="invite-page page-3" id="page-ceremony" data-page="3">
-        <p class="serif-caps reveal-line" style="--line-delay: 60ms; margin-bottom: 4px;">Celebration Details</p>
+        <p class="serif-caps reveal-line" style="--line-delay: 60ms; margin-bottom: 4px;">Our Silver Jubilee</p>
 
-        <h2 class="script-heading script-title reveal-line" style="--line-delay: 130ms;">
-          Silver Jubilee Celebration
+        <h2 class="script-heading script-title reveal-line" style="--line-delay: 130ms; margin-bottom: 18px;">
+          25 Years of Love
         </h2>
 
-        <div class="ceremony-details-box reveal-line" style="--line-delay: 210ms;">
-          <p class="ceremony-datetime">Wednesday, 25 November 2026 • 7 PM onwards</p>
-          <p class="ceremony-venue-short">Golden Dreams Banquets, Block K, Kalkaji, New Delhi</p>
-        </div>
-
         <!-- Couple Portrait Stage (Silver Jubilee Lotus Arch) -->
-        <div class="couple-stage-frame reveal-line" style="--line-delay: 300ms;">
+        <div class="couple-stage-frame reveal-line" style="--line-delay: 220ms;">
           <video
             class="couple-video"
             id="couple-anniversary-video"
@@ -1172,11 +1187,11 @@
       </section>
 
       <!-- =================================================================
-           PAGE 4: VENUE & GOOGLE MAPS NAVIGATION
+           PAGE 4: WHEN & WHERE (Single Authoritative Date, Time & Venue Card)
            ================================================================= -->
       <section class="invite-page page-4" id="page-venue" data-page="4">
-        <p class="serif-caps reveal-line" style="--line-delay: 60ms;">Where We Celebrate</p>
-        <h2 class="script-heading script-title reveal-line" style="--line-delay: 130ms;">The Venue</h2>
+        <p class="serif-caps reveal-line" style="--line-delay: 60ms;">Celebration Details</p>
+        <h2 class="script-heading script-title reveal-line" style="--line-delay: 130ms;">When &amp; Where</h2>
 
         <div class="venue-card reveal-line" style="--line-delay: 220ms;">
           <div class="venue-icon-badge" aria-hidden="true">
@@ -1184,6 +1199,11 @@
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
               <circle cx="12" cy="10" r="3"></circle>
             </svg>
+          </div>
+
+          <div class="venue-datetime-block">
+            <p class="venue-date">Wednesday, 25 November 2026</p>
+            <p class="venue-time">7 PM onwards</p>
           </div>
 
           <h3 class="venue-name">Golden Dreams Banquets</h3>
@@ -1221,18 +1241,23 @@
       </section>
 
       <!-- =================================================================
-           PAGE 5: LAST PAGE (Awaiting your presence, With love, Family line, Memories Gallery Card)
+           PAGE 5: LAST PAGE (Awaiting your presence, Blessings, Hosts, Memories Card)
            ================================================================= -->
       <section class="invite-page page-5" id="page-blessings" data-page="5">
         <h2 class="script-heading script-title reveal-line" style="--line-delay: 60ms;">
           Awaiting your presence
         </h2>
 
-        <p class="serif-body reveal-line" style="--line-delay: 140ms; font-size: 1.14rem; font-weight: 600; color: var(--royal-blue);">
-          With love, Piyush &amp; Aadish
+        <p class="serif-body reveal-line" style="--line-delay: 120ms; color: var(--text-main); margin-top: 6px; line-height: 1.45;">
+          With the blessings of<br />
+          <strong style="color: var(--royal-blue);">Suresh &amp; Daya Goel</strong>
         </p>
 
-        <p class="serif-body reveal-line" style="--line-delay: 210ms; color: var(--text-muted); font-style: italic;">
+        <p class="serif-body reveal-line" style="--line-delay: 170ms; font-size: 1.12rem; font-weight: 600; color: var(--royal-blue); margin-top: 10px;">
+          With love from Piyush &amp; Aadish
+        </p>
+
+        <p class="serif-body reveal-line" style="--line-delay: 220ms; color: var(--text-muted); font-style: italic; margin-top: 2px;">
           The Goel Family
         </p>
 
