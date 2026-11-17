@@ -301,6 +301,38 @@
     }
   });
 
+  // Before-event gate: before 26 Nov 2026 (Asia/Kolkata), show friendly pre-event notice
+  var beforeEventView = document.getElementById('before-event-view');
+  var earlySigninBtn = document.getElementById('btn-early-signin');
+
+  function isBeforeGalleryLaunchIST() {
+    try {
+      var istDate = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(new Date());
+      return istDate < '2026-11-26';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  var forceUnlock = (window.location && window.location.search && window.location.search.indexOf('unlock=1') !== -1);
+  if (beforeEventView && !state.token && !forceUnlock && isBeforeGalleryLaunchIST()) {
+    loginView.classList.add('hidden');
+    beforeEventView.classList.remove('hidden');
+  }
+
+  if (earlySigninBtn && beforeEventView) {
+    earlySigninBtn.addEventListener('click', function () {
+      beforeEventView.classList.add('hidden');
+      loginView.classList.remove('hidden');
+      if (loginUserInput) loginUserInput.focus();
+    });
+  }
+
   // Restore active session on page reload
   if (state.token) {
     google.script.run

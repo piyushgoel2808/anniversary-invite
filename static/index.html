@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="color-scheme" content="light" />
   <title>Navneet &amp; Ruby — Silver Jubilee (25th Wedding Anniversary) Invitation</title>
   <meta name="description" content="With the blessings of the Almighty, we joyfully invite you to celebrate 25 years of our togetherness — Navneet Goel &amp; Ruby Goel on Wednesday, 25 November 2026 in New Delhi." />
 
@@ -39,8 +41,9 @@
       --silver-mid: #BEC6D4;
       --silver-dark: #7E8B9F;
       --text-main: #182C4F;
-      --text-muted: #4A5C7A;
+      --text-muted: #3F5170;
       --phone-width: 390px;
+      color-scheme: light;
     }
 
     * {
@@ -375,7 +378,7 @@
     }
 
     .script-names-lg {
-      font-size: 2.35rem;
+      font-size: clamp(1.92rem, 8.8vw, 2.35rem);
       margin: 6px 0;
     }
 
@@ -458,18 +461,118 @@
       padding: 3px 4px 0 0;
     }
 
-    /* Scroll Cue on Page 1 */
+    /* Scroll / Tap Cue on Page 1 (Clickable Fallback for Older Relatives + Desktop/Touch Copy) */
     .scroll-cue {
-      margin-top: 22px;
-      display: flex;
+      margin-top: 18px;
+      min-height: 44px;
+      padding: 8px 16px;
+      background: transparent;
+      border: none;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      font-size: 0.76rem;
-      letter-spacing: 0.16em;
+      justify-content: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--text-muted);
-      opacity: 0.85;
+    }
+
+    .scroll-cue:hover, .scroll-cue:focus-visible {
+      color: var(--royal-blue);
+      outline: none;
+    }
+
+    .cue-desktop { display: none; }
+    .cue-touch { display: inline; }
+    @media (hover: hover) and (pointer: fine) {
+      .cue-desktop { display: inline; }
+      .cue-touch { display: none; }
+    }
+
+    .countdown-pill {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      background: rgba(27, 54, 100, 0.07);
+      border: 1px solid rgba(154, 168, 188, 0.55);
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--royal-blue);
+      font-weight: 600;
+    }
+
+    .countdown-pill.hidden {
+      display: none;
+    }
+
+    .thankyou-banner {
+      width: 100%;
+      max-width: 312px;
+      margin: 12px auto 0 auto;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--silver-mid);
+      box-shadow: 0 8px 20px rgba(27, 54, 100, 0.1);
+      text-align: center;
+    }
+
+    .thankyou-banner.hidden {
+      display: none;
+    }
+
+    .thankyou-banner p {
+      font-size: 0.95rem;
+      color: var(--text-main);
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+
+    .btn-scratch-fallback {
+      margin-top: 8px;
+      min-height: 44px;
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: 1px solid var(--silver-mid);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--royal-blue);
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .btn-scratch-fallback:hover, .btn-scratch-fallback:focus-visible {
+      background: #FFFFFF;
+      border-color: var(--royal-blue);
+    }
+
+    .btn-scratch-fallback.hidden {
+      display: none;
+    }
+
+    @media (max-width: 375px) {
+      .invite-page {
+        padding-left: 24px;
+        padding-right: 24px;
+      }
+      .scratch-card-container {
+        width: 256px;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html, body {
+        background-color: #181D26;
+        background-image: radial-gradient(circle at 50% 30%, #242B38 0%, #12161E 100%);
+      }
     }
 
     .scroll-cue-arrow {
@@ -639,6 +742,7 @@
       justify-content: center;
       gap: 8px;
       width: 100%;
+      min-height: 48px;
       padding: 12px 18px;
       border-radius: 999px;
       background: linear-gradient(135deg, var(--royal-blue) 0%, var(--deep-navy) 100%);
@@ -667,8 +771,9 @@
       justify-content: center;
       gap: 8px;
       width: 100%;
+      min-height: 48px;
       margin-top: 10px;
-      padding: 11px 18px;
+      padding: 12px 18px;
       border-radius: 999px;
       border: 1.5px solid var(--silver-mid);
       background: rgba(244, 247, 252, 0.92);
@@ -972,10 +1077,18 @@
           2001 &mdash; 2026 &bull; New Delhi
         </p>
 
-        <div class="scroll-cue reveal-line" style="--line-delay: 560ms;" aria-hidden="true">
-          <span>Swipe up to begin</span>
-          <div class="scroll-cue-arrow"></div>
+        <div class="countdown-pill hidden reveal-line" style="--line-delay: 520ms;" id="countdown-pill" aria-live="polite"></div>
+
+        <div class="thankyou-banner hidden reveal-line" style="--line-delay: 540ms;" id="post-event-thankyou">
+          <p><strong>Thank you for celebrating 25 years with us!</strong><br />Our celebration photographs are now live.</p>
+          <a href="memories.html" class="btn-enter-memories">Enter Our Memories Gallery</a>
         </div>
+
+        <button type="button" class="scroll-cue reveal-line" style="--line-delay: 560ms;" id="btn-begin-invite">
+          <span class="cue-touch">Swipe up or tap to begin</span>
+          <span class="cue-desktop">Scroll down or click to begin</span>
+          <span class="scroll-cue-arrow" aria-hidden="true"></span>
+        </button>
       </section>
 
       <!-- =================================================================
@@ -1006,14 +1119,18 @@
           <div class="scratch-card-container" id="scratch-card-box">
             <div class="scratch-card-inner" aria-live="polite">
               <span class="revealed-date-day">Wednesday</span>
-              <div class="revealed-date-main">25 • 11 • 2026</div>
-              <span class="revealed-date-sub">25 November 2026 • Silver Jubilee</span>
+              <div class="revealed-date-main">25 &bull; 11 &bull; 2026</div>
+              <span class="revealed-date-sub">Silver Jubilee Celebration</span>
             </div>
 
-            <canvas id="scratch-canvas" width="262" height="110" aria-label="Scratch to reveal the anniversary date"></canvas>
+            <canvas id="scratch-canvas" width="262" height="110" aria-label="Scratch or tap to reveal the anniversary date"></canvas>
           </div>
 
-          <p class="scratch-hint" id="scratch-status-text">Rub gently with your finger or mouse</p>
+          <p class="scratch-hint" id="scratch-status-text">
+            <span class="cue-touch">Rub gently with your finger, or tap below</span>
+            <span class="cue-desktop">Rub with your mouse, or click below</span>
+          </p>
+          <button type="button" class="btn-scratch-fallback" id="btn-reveal-date">Tap to reveal date</button>
         </div>
       </section>
 
@@ -1037,16 +1154,19 @@
           <video
             class="couple-video"
             id="couple-anniversary-video"
+            width="260"
+            height="380"
+            poster="couple-poster.jpg"
             autoplay
             loop
             muted
             playsinline
-            preload="auto"
+            preload="metadata"
             aria-label="Navneet &amp; Ruby Goel Silver Jubilee celebration"
           >
             <source src="couple-origami.mp4" type="video/mp4">
             <source src="couple-video.mp4" type="video/mp4">
-            <img src="og-preview.jpg" alt="Navneet &amp; Ruby Goel" class="couple-video" />
+            <img src="couple-poster.jpg" alt="Navneet &amp; Ruby Goel" width="260" height="380" class="couple-video" />
           </video>
         </div>
       </section>
@@ -1109,7 +1229,7 @@
         </h2>
 
         <p class="serif-body reveal-line" style="--line-delay: 140ms; font-size: 1.14rem; font-weight: 600; color: var(--royal-blue);">
-          With love, Navneet &amp; Ruby Goel
+          With love, Piyush &amp; Aadish
         </p>
 
         <p class="serif-body reveal-line" style="--line-delay: 210ms; color: var(--text-muted); font-style: italic;">
@@ -1129,8 +1249,8 @@
             <h3 class="script-heading script-subtitle" style="margin: 0;">Anniversary Memories</h3>
           </div>
 
-          <p class="memories-description">
-            Every celebration becomes more beautiful with the memories we create together. Share your favourite photographs and relive the moments of our Silver Jubilee.
+          <p class="memories-description" id="memories-description-text">
+            After the celebration, all our photographs from the Silver Jubilee will be shared here.
           </p>
 
           <a
@@ -1449,6 +1569,18 @@
         sCtx.fill();
       }
 
+      function revealScratchCard() {
+        if (isRevealed) return;
+        isRevealed = true;
+        scratchCanvas.classList.add('is-cleared');
+        const revealBtn = document.getElementById('btn-reveal-date');
+        if (revealBtn) revealBtn.classList.add('hidden');
+        if (statusText) {
+          statusText.textContent = '✨ Wednesday, 25 November 2026 ✨';
+        }
+        triggerRosePetalShower();
+      }
+
       function checkScratchPercentage() {
         if (isRevealed) return;
         const imgData = sCtx.getImageData(0, 0, scratchCanvas.width, scratchCanvas.height).data;
@@ -1461,14 +1593,63 @@
         }
         const clearedRatio = transparentPixels / totalSampled;
         if (clearedRatio >= 0.32) {
-          isRevealed = true;
-          scratchCanvas.classList.add('is-cleared');
-          if (statusText) {
-            statusText.textContent = '✨ Wednesday, 25 November 2026 ✨';
-          }
-          triggerRosePetalShower();
+          revealScratchCard();
         }
       }
+
+      const revealDateBtn = document.getElementById('btn-reveal-date');
+      if (revealDateBtn) {
+        revealDateBtn.addEventListener('click', revealScratchCard);
+      }
+
+      // Page 1 clickable tap/click fallback to jump smoothly to Page 2
+      const beginBtn = document.getElementById('btn-begin-invite');
+      if (beginBtn) {
+        beginBtn.addEventListener('click', () => {
+          const inviteSec = document.getElementById('page-invitation');
+          if (inviteSec) {
+            inviteSec.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
+          }
+        });
+      }
+
+      // Asia/Kolkata date-aware countdown (disappears after 25 Nov) & post-event thank-you state
+      (function initEventDateState() {
+        try {
+          const istDateStr = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).format(new Date());
+          const parts = istDateStr.split('-').map(Number);
+          const todayUtc = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+          const eventUtc = Date.UTC(2026, 10, 25); // 25 Nov 2026
+          const diffDays = Math.round((eventUtc - todayUtc) / 86400000);
+
+          const countdownEl = document.getElementById('countdown-pill');
+          const thankyouEl = document.getElementById('post-event-thankyou');
+          const memoriesDescEl = document.getElementById('memories-description-text');
+
+          if (diffDays > 1 && countdownEl) {
+            countdownEl.textContent = diffDays + ' days to go';
+            countdownEl.classList.remove('hidden');
+          } else if (diffDays === 1 && countdownEl) {
+            countdownEl.textContent = 'Tomorrow • 7 PM onwards';
+            countdownEl.classList.remove('hidden');
+          } else if (diffDays === 0 && countdownEl) {
+            countdownEl.textContent = 'Today • 7 PM onwards';
+            countdownEl.classList.remove('hidden');
+          } else if (diffDays < 0) {
+            if (thankyouEl) thankyouEl.classList.remove('hidden');
+            if (memoriesDescEl) {
+              memoriesDescEl.textContent = 'Thank you for celebrating with us! Share your favourite photographs and relive the moments of our Silver Jubilee.';
+            }
+          }
+        } catch (e) {
+          // Graceful fallback if Intl timeZone is unavailable
+        }
+      })();
 
       scratchCanvas.addEventListener('mousedown', (e) => {
         isDrawing = true;
@@ -1518,12 +1699,25 @@
       });
 
       /* =====================================================================
-         4. ONE-TAP ADD TO CALENDAR (.ics Download — iOS, Android, Desktop)
+         4. ONE-TAP ADD TO CALENDAR (Google Calendar on Android, .ics on iOS/Desktop)
+         Event: 25 Nov 2026, 7:00 PM - 10:30 PM Asia/Kolkata (13:30Z - 17:00Z)
          ===================================================================== */
       const addCalendarBtn = document.getElementById('btn-add-calendar');
       if (addCalendarBtn) {
         addCalendarBtn.addEventListener('click', () => {
-          // 25 Nov 2026 7:00 PM IST (13:30 UTC) to 11:30 PM IST (18:00 UTC)
+          const isAndroid = /Android/i.test(navigator.userAgent || '');
+          if (isAndroid) {
+            const gcalUrl =
+              'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+              '&text=' + encodeURIComponent("Navneet & Ruby's Silver Jubilee") +
+              '&dates=20261125T133000Z/20261125T170000Z' +
+              '&ctz=Asia/Kolkata' +
+              '&location=' + encodeURIComponent('Golden Dreams Banquets, Block K, Kalkaji, New Delhi') +
+              '&details=' + encodeURIComponent('Celebrating 25 Years of Togetherness (2001 - 2026). Digital Invitation: https://piyushgoel2808.github.io/anniversary-invite/');
+            window.open(gcalUrl, '_blank', 'noopener,noreferrer');
+            return;
+          }
+
           const icsLines = [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
@@ -1534,9 +1728,9 @@
             'UID:silver-jubilee-navneet-ruby-20261125@anniversary-invite',
             'DTSTAMP:20261118T000000Z',
             'DTSTART:20261125T133000Z',
-            'DTEND:20261125T180000Z',
-            'SUMMARY:Navneet & Ruby Goel — Silver Jubilee (25th Anniversary)',
-            'DESCRIPTION:Celebrating 25 Years of Togetherness (2001 - 2026). Invitation & Private Memories Gallery: https://piyushgoel2808.github.io/anniversary-invite/',
+            'DTEND:20261125T170000Z',
+            "SUMMARY:Navneet & Ruby's Silver Jubilee",
+            'DESCRIPTION:Celebrating 25 Years of Togetherness (2001 - 2026). Digital Invitation: https://piyushgoel2808.github.io/anniversary-invite/',
             'LOCATION:Golden Dreams Banquets\\, Block K\\, Kalkaji\\, New Delhi',
             'END:VEVENT',
             'END:VCALENDAR'

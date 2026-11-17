@@ -4,11 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <title>Navneet &amp; Ruby — Silver Jubilee Memories Gallery</title>
-  <meta name="description" content="Private Silver Jubilee family photo album for Navneet &amp; Ruby Goel's 25th Wedding Anniversary. Sign in with your first name and 10-digit mobile number to view, upload &amp; download photos." />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="color-scheme" content="light" />
+  <meta name="description" content="Private Silver Jubilee family photo album for Navneet &amp; Ruby Goel's 25th Wedding Anniversary. Photos will be shared here after the celebration on 25 November 2026." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://piyushgoel2808.github.io/anniversary-invite/memories.html" />
   <meta property="og:title" content="Navneet &amp; Ruby — Silver Jubilee Memories Gallery" />
-  <meta property="og:description" content="Private family photo album for Navneet &amp; Ruby Goel's 25th Wedding Anniversary. Sign in with your first name &amp; 10-digit mobile number." />
+  <meta property="og:description" content="Private family photo album for Navneet &amp; Ruby Goel's 25th Wedding Anniversary." />
   <meta property="og:image" content="https://piyushgoel2808.github.io/anniversary-invite/og-preview.jpg" />
   <meta property="og:image:secure_url" content="https://piyushgoel2808.github.io/anniversary-invite/og-preview.jpg" />
   <meta property="og:image:type" content="image/jpeg" />
@@ -1075,6 +1077,48 @@
 <body>
 
   <!-- =====================================================================
+       0. BEFORE-EVENT NOTICE (Shown before 26 Nov 2026 Asia/Kolkata)
+       ===================================================================== -->
+  <section id="before-event-view" class="auth-screen hidden" aria-live="polite">
+    <div class="auth-card">
+      <svg class="lotus-emblem" viewBox="0 0 120 82" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="lotusPre" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFFFFF"/>
+            <stop offset="50%" stop-color="#DCE3EE"/>
+            <stop offset="100%" stop-color="#9BA8BC"/>
+          </linearGradient>
+        </defs>
+        <path d="M60,64 C35,64 12,54 6,40 C22,38 42,46 60,64 Z" fill="#284B82" opacity="0.65" stroke="#1B3664" stroke-width="0.9"/>
+        <path d="M60,64 C85,64 108,54 114,40 C98,38 78,46 60,64 Z" fill="#284B82" opacity="0.65" stroke="#1B3664" stroke-width="0.9"/>
+        <path d="M60,64 C38,52 20,32 22,16 C38,22 50,38 60,64 Z" fill="url(#lotusPre)" stroke="#526582" stroke-width="1"/>
+        <path d="M60,64 C82,52 100,32 98,16 C82,22 70,38 60,64 Z" fill="url(#lotusPre)" stroke="#526582" stroke-width="1"/>
+        <path d="M60,65 C49,42 49,18 60,3 C71,18 71,42 60,65 Z" fill="url(#lotusPre)" stroke="#1B3664" stroke-width="1.1"/>
+      </svg>
+
+      <p class="serif-caps">25 Years Together &bull; Anniversary Memories</p>
+      <h1 class="script-heading auth-title">Navneet &amp; Ruby</h1>
+      <p class="auth-sub" style="font-size:1rem;color:var(--text-main);margin-bottom:22px;">
+        Photos will be shared here after the celebration on <strong>25 November 2026</strong>. Please come back soon!
+      </p>
+
+      <a href="./" class="btn btn-primary" style="width:100%;text-decoration:none;">
+        &larr; Back to Silver Jubilee Invitation
+      </a>
+
+      <div class="privacy-pill" style="margin-top:18px;">
+        <span>Private family gallery &bull; Opens after the celebration</span>
+      </div>
+
+      <p style="margin-top:14px;">
+        <button type="button" id="btn-early-signin" style="background:none;border:none;color:var(--soft-blue);font-family:inherit;font-size:0.84rem;cursor:pointer;text-decoration:underline;min-height:44px;padding:6px 10px;">
+          Host or early guest? Open Sign-In &rarr;
+        </button>
+      </p>
+    </div>
+  </section>
+
+  <!-- =====================================================================
        1. GUEST LOGIN VIEW (Shown until authenticated)
        ===================================================================== -->
   <section id="login-view" class="auth-screen">
@@ -1799,6 +1843,38 @@
       google.script.run.guestLogout(tok);
     }
   });
+
+  // Before-event gate: before 26 Nov 2026 (Asia/Kolkata), show friendly pre-event notice
+  var beforeEventView = document.getElementById('before-event-view');
+  var earlySigninBtn = document.getElementById('btn-early-signin');
+
+  function isBeforeGalleryLaunchIST() {
+    try {
+      var istDate = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(new Date());
+      return istDate < '2026-11-26';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  var forceUnlock = (window.location && window.location.search && window.location.search.indexOf('unlock=1') !== -1);
+  if (beforeEventView && !state.token && !forceUnlock && isBeforeGalleryLaunchIST()) {
+    loginView.classList.add('hidden');
+    beforeEventView.classList.remove('hidden');
+  }
+
+  if (earlySigninBtn && beforeEventView) {
+    earlySigninBtn.addEventListener('click', function () {
+      beforeEventView.classList.add('hidden');
+      loginView.classList.remove('hidden');
+      if (loginUserInput) loginUserInput.focus();
+    });
+  }
 
   // Restore active session on page reload
   if (state.token) {
