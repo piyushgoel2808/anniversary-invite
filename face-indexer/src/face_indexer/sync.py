@@ -95,6 +95,13 @@ PROTECTED_REVIEW_STATUSES: frozenset[str] = frozenset(
 
 
 @dataclass(frozen=True)
+class RemoteGuest:
+    guest_id: str
+    username: str
+    display_name: str
+
+
+@dataclass(frozen=True)
 class RemotePhoto:
     photo_id: str
     drive_file_id: str
@@ -263,6 +270,17 @@ class AppsScriptBackend:
     def ensure_face_sheets(self) -> None:
         # adminSyncGetState ensures all 4 face sheets exist and fetches current state in 1 call
         self._get_state(force_refresh=True)
+
+    def list_active_guests(self) -> list[RemoteGuest]:
+        state = self._get_state()
+        return [
+            RemoteGuest(
+                guest_id=str(g["guest_id"]),
+                username=str(g.get("username", "")).strip().lower(),
+                display_name=str(g.get("guest_name", g["guest_id"])).strip(),
+            )
+            for g in state.get("guests", [])
+        ]
 
     def list_active_photos(self) -> list[RemotePhoto]:
         state = self._get_state()
@@ -969,3 +987,134 @@ def run_sync(
         elapsed_ms=elapsed_ms,
         errors=tuple(errors),
     )
+
+
+@dataclass(frozen=True)
+class SeedGuestsReport:
+    guests_seeded: int
+    references_accepted: int
+    references_cached: int
+    references_rejected: int
+    unmatched_folders: tuple[str, ...]
+    skipped_revoked: tuple[str, ...]
+    new_suggestions_created: int
+    suggestions_pushed: int
+
+
+def seed_local_guests(
+    backend: AppsScriptBackend,
+    references_root: Path,
+    store: SQLiteFaceStore,
+    engine: FaceRecognitionEngine,
+    *,
+    threshold: float = CALIBRATED_COSINE_THRESHOLD,
+    strategy: ScoringStrategy = "max_ref",
+    progress_cb: Callable[[str], None] | None = None,
+) -> SeedGuestsReport:
+    """Register local guest reference folders directly under live GUEST_DATABASE guest_ids.
+
+    Matches each subfolder name in ``references_root`` against live guest ``username``
+    (or exact ``guest_id`` / ``guest_name``, case-insensitive). Raw reference photos stay
+    strictly on your Mac; only encrypted embeddings are stored locally and FACE_PROFILES
+    is marked ACTIVE while all photo matches still start as PENDING for guest review.
+    """
+    if not references_root.is_dir():
+        raise FileNotFoundError(f"References directory not found: {references_root}")
+
+    def _log(msg: str) -> None:
+        if progress_cb is not None:
+            progress_cb(msg)
+
+    _log("[1/4] Fetching active guest directory from SILVER_JUBILEE_GALLERY_DB...")
+    backend.ensure_face_sheets()
+    active_guests = backend.list_active_guests()
+    existing_profiles = {p.guest_id: p for p in backend.list_face_profiles()}
+
+    by_username = {g.username.lower(): g for g in active_guests if g.username}
+    by_id = {g.guest_id.lower(): g for g in active_guests}
+    by_name = {g.display_name.lower(): g for g in active_guests if g.display_name}
+
+    subdirs = sorted(p for p in references_root.iterdir() if p.is_dir())
+    _log(
+        f"[2/4] Scanning {len(subdirs)} local reference folder(s) against "
+        f"{len(active_guests)} active guest(s)..."
+    )
+
+    seeded = 0
+    total_acc = 0
+    total_cached = 0
+    total_rej = 0
+    unmatched: list[str] = []
+    skipped_revoked: list[str] = []
+
+    for subdir in subdirs:
+        key = subdir.name.strip().lower()
+        guest = by_username.get(key) or by_id.get(key) or by_name.get(key)
+        if guest is None:
+            unmatched.append(subdir.name)
+            _log(f"      [SKIP] Folder '{subdir.name}' did not match any active guest username.")
+            continue
+
+        remote_prof = existing_profiles.get(guest.guest_id)
+        if remote_prof and (remote_prof.status == "WITHDRAWN" or remote_prof.consent == "REVOKED"):
+            skipped_revoked.append(f"{guest.display_name} ({guest.username})")
+            _log(f"      [SKIP] {guest.display_name} withdrew face consent — respecting opt-out.")
+            continue
+
+        summary = register_guest_folder(
+            guest_id=guest.guest_id,
+            display_name=guest.display_name,
+            ref_dir=subdir,
+            store=store,
+            engine=engine,
+        )
+        total_acc += summary.accepted
+        total_cached += summary.skipped_cached
+        total_rej += summary.rejected
+
+        valid_total = summary.accepted + summary.skipped_cached
+        if valid_total > 0:
+            now_iso = datetime.datetime.now(datetime.UTC).isoformat()
+            backend.update_face_profile_status(guest.guest_id, "ACTIVE", now_iso)
+            seeded += 1
+            _log(
+                f"      [OK] {guest.display_name} (@{guest.username} -> {guest.guest_id}): "
+                f"accepted={summary.accepted}, cached={summary.skipped_cached}, "
+                f"rejected={summary.rejected}"
+            )
+        else:
+            _log(
+                f"      [WARN] {guest.display_name} (@{guest.username}): "
+                f"0 valid face(s) detected in {subdir.name}/"
+            )
+
+    _log(f"[3/4] Matching cached album faces locally (threshold={threshold})...")
+    match_res = run_matching(store, threshold=threshold, strategy=strategy)
+
+    unsynced = store.get_unsynced_suggestions()
+    _log(f"[4/4] Pushing {len(unsynced)} new PENDING suggestion(s) to FACE_MATCHES...")
+    payload = [
+        RemoteFaceMatch(
+            photo_id=s.photo_id,
+            guest_id=s.guest_id,
+            confidence=s.confidence,
+            status=s.status,
+            model_version=s.model_version,
+        )
+        for s in unsynced
+    ]
+    pushed = backend.upsert_face_matches(payload)
+    if unsynced:
+        store.mark_suggestions_synced([s.id for s in unsynced])
+
+    return SeedGuestsReport(
+        guests_seeded=seeded,
+        references_accepted=total_acc,
+        references_cached=total_cached,
+        references_rejected=total_rej,
+        unmatched_folders=tuple(unmatched),
+        skipped_revoked=tuple(skipped_revoked),
+        new_suggestions_created=match_res.new_suggestions,
+        suggestions_pushed=pushed,
+    )
+

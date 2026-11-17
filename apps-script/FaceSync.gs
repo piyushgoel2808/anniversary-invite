@@ -116,12 +116,24 @@ function adminSyncGetState(adminToken) {
       }
     }
 
+    var activeGuests = [];
+    for (var g = 0; g < guestIndex.list.length; g++) {
+      var gu = guestIndex.list[g];
+      if (gu.status !== 'active') continue;
+      activeGuests.push({
+        guest_id: gu.guest_id,
+        username: gu.username,
+        guest_name: gu.guest_name
+      });
+    }
+
     // Ensure PHOTO_PROCESSING & FACE_REVIEW_LOG exist too
     getPhotoProcessingSheet_();
     getFaceReviewLogSheet_();
 
     return {
       ok: true,
+      guests: activeGuests,
       photos: activePhotos,
       profiles: profiles,
       matches: matches
@@ -332,12 +344,26 @@ function adminSyncUpdateProfileStatus(guestId, status, processedAt, adminToken) 
 
     var sheet = getFaceProfilesSheet_();
     var rec = findFaceProfileRow_(sheet, cleanGid);
-    if (!rec) {
-      throw new Error('NOT_FOUND: Guest profile row not found.');
-    }
+    var nowIso = String(processedAt || new Date().toISOString());
 
-    sheet.getRange(rec.rowNumber, 2).setValue(cleanStatus);
-    sheet.getRange(rec.rowNumber, 5).setValue(String(processedAt || new Date().toISOString()));
+    if (rec) {
+      // Respect explicit guest consent withdrawal: do not overwrite WITHDRAWN/REVOKED back to ACTIVE
+      if (cleanStatus === 'ACTIVE' && (rec.status === 'WITHDRAWN' || rec.consent === 'REVOKED')) {
+        return { ok: true, guest_id: cleanGid, status: rec.status, skipped: 'CONSENT_REVOKED' };
+      }
+      sheet.getRange(rec.rowNumber, 2).setValue(cleanStatus);
+      sheet.getRange(rec.rowNumber, 5).setValue(nowIso);
+    } else {
+      // Family pre-registered reference photos locally on Mac (raw selfies stay strictly local)
+      sheet.appendRow([
+        cleanGid,
+        cleanStatus,
+        'FAMILY_ADDED',
+        nowIso,
+        nowIso,
+        1
+      ]);
+    }
     invalidateGuestFaceCache_(cleanGid);
 
     return { ok: true, guest_id: cleanGid, status: cleanStatus };

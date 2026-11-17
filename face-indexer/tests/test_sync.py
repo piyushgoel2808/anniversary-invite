@@ -31,6 +31,7 @@ from face_indexer.sync import (
     RemotePhoto,
     RemoteReferenceFile,
     run_sync,
+    seed_local_guests,
 )
 
 
@@ -412,4 +413,104 @@ def test_apps_script_backend_end_to_end(tmp_path: Path) -> None:
     assert "adminSyncDeleteRef" in calls
     assert "adminSyncPushMatches" in calls
     assert "adminLogout" in calls
+
+
+def test_seed_local_guests_maps_usernames_and_respects_opt_out(tmp_path: Path) -> None:
+    emb_navneet = _unit_vec(7)
+    emb_ruby = _unit_vec(8)
+    stub = _StubEngine({50: [emb_navneet], 100: [emb_ruby]})
+    engine = cast(FaceRecognitionEngine, stub)
+
+    refs_dir = tmp_path / "references"
+    _make_dummy_jpeg(refs_dir / "navneet" / "r1.jpg", (50, 10, 10))
+    _make_dummy_jpeg(refs_dir / "ruby" / "r1.jpg", (100, 10, 10))
+    _make_dummy_jpeg(refs_dir / "unknown_person" / "r1.jpg", (50, 10, 10))
+
+    album_dir = tmp_path / "album"
+    _make_dummy_jpeg(album_dir / "pho_999.jpg", (50, 20, 20))
+
+    store = SQLiteFaceStore(tmp_path / "seed.db")
+    index_album_folder(
+        album_dir,
+        store,
+        engine,
+        photo_id_by_filename={"pho_999.jpg": "pho_999"},
+    )
+
+    pushed_matches: list[dict[str, Any]] = []
+    activated_ids: list[str] = []
+
+    class _FakeResp:
+        def __init__(self, payload: dict[str, Any]) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, Any]:
+            return self._payload
+
+    class _FakeSession:
+        def post(self, url: str, data: str, **kwargs: Any) -> _FakeResp:
+            body = json.loads(data)
+            action = body["action"]
+            args = body["args"]
+            if action == "adminLogin":
+                return _FakeResp({"ok": True, "token": "adm_tok"})
+            if action == "adminSyncGetState":
+                return _FakeResp(
+                    {
+                        "ok": True,
+                        "guests": [
+                            {
+                                "guest_id": "gst_navneet_123",
+                                "username": "navneet",
+                                "guest_name": "Navneet",
+                            },
+                            {
+                                "guest_id": "gst_ruby_456",
+                                "username": "ruby",
+                                "guest_name": "Ruby",
+                            },
+                        ],
+                        "photos": [],
+                        "profiles": [
+                            {
+                                "guest_id": "gst_ruby_456",
+                                "display_name": "Ruby",
+                                "status": "WITHDRAWN",
+                                "consent": "REVOKED",
+                            }
+                        ],
+                        "matches": [],
+                    }
+                )
+            if action == "adminSyncUpdateProfileStatus":
+                activated_ids.append(args[0])
+                return _FakeResp({"ok": True})
+            if action == "adminSyncPushMatches":
+                pushed_matches.extend(args[0])
+                return _FakeResp({"ok": True, "pushed": len(args[0])})
+            if action == "adminLogout":
+                return _FakeResp({"ok": True})
+            raise AssertionError(f"Unexpected action: {action}")
+
+    with AppsScriptBackend(
+        apps_script_url="https://script.google.com/fake/exec",
+        admin_username="admin",
+        admin_password="secret",
+        session=cast(requests.Session, _FakeSession()),
+    ) as backend:
+        report = seed_local_guests(backend, refs_dir, store, engine, threshold=0.50)
+
+    assert report.guests_seeded == 1
+    assert report.references_accepted == 1
+    assert report.unmatched_folders == ("unknown_person",)
+    assert report.skipped_revoked == ("Ruby (ruby)",)
+    assert activated_ids == ["gst_navneet_123"]
+    assert len(pushed_matches) == 1
+    assert pushed_matches[0]["photo_id"] == "pho_999"
+    assert pushed_matches[0]["guest_id"] == "gst_navneet_123"
+    assert pushed_matches[0]["status"] == "PENDING"
+
 

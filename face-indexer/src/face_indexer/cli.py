@@ -61,6 +61,7 @@ from face_indexer.sync import (
     AppsScriptBackend,
     GoogleWorkspaceBackend,
     run_sync,
+    seed_local_guests,
 )
 
 DEFAULT_DB_PATH = Path("data/indexer.db")
@@ -333,6 +334,63 @@ def _cmd_sync(args: argparse.Namespace) -> int:
         print(f"Errors ({len(report.errors)}):", file=sys.stderr)
         for err in report.errors:
             print(f"  - {err}", file=sys.stderr)
+    return 0
+
+
+def _cmd_seed_guests(args: argparse.Namespace) -> int:
+    def _progress(msg: str) -> None:
+        print(msg, flush=True)
+
+    store = _open_store(args)
+    engine = FaceRecognitionEngine(models_dir=Path(args.models_dir))
+
+    cfg = load_autosync_config()
+    admin_user = args.admin_user or os.environ.get("FACE_INDEXER_ADMIN_USER") or ""
+    if not admin_user and cfg:
+        admin_user = cfg.admin_user
+    if not admin_user:
+        admin_user = input("Admin username: ").strip()
+
+    admin_pass = os.environ.get("FACE_INDEXER_ADMIN_PASSWORD") or ""
+    if not admin_pass and has_keychain_password(admin_user):
+        admin_pass = get_keychain_password(admin_user)
+    if not admin_pass:
+        admin_pass = getpass.getpass("Admin password (hidden while typing): ")
+
+    url = args.apps_script_url or (cfg.apps_script_url if cfg else DEFAULT_APPS_SCRIPT_URL)
+    _progress(f"Signing in as admin '{admin_user}'...")
+    with AppsScriptBackend(
+        apps_script_url=str(url),
+        admin_username=admin_user,
+        admin_password=admin_pass,
+    ) as backend:
+        report = seed_local_guests(
+            backend,
+            Path(args.references),
+            store,
+            engine,
+            threshold=float(args.threshold),
+            strategy=cast(ScoringStrategy, args.strategy),
+            progress_cb=_progress,
+        )
+
+    print("\n=== Pre-Registered Local Guest Faces Summary ===")
+    print(f"Guests seeded:        {report.guests_seeded}")
+    print(
+        f"Refs accepted/cached: {report.references_accepted} new, "
+        f"{report.references_cached} cached"
+    )
+    print(f"Refs rejected:        {report.references_rejected}")
+    print(f"New suggestions:      {report.new_suggestions_created}")
+    print(f"Suggestions pushed:   {report.suggestions_pushed}")
+    if report.unmatched_folders:
+        print("Unmatched folders (rename to match GUEST_DATABASE username):")
+        for folder in report.unmatched_folders:
+            print(f"  - {folder}")
+    if report.skipped_revoked:
+        print("Skipped (guest opted out / withdrew consent):")
+        for name in report.skipped_revoked:
+            print(f"  - {name}")
     return 0
 
 
@@ -613,11 +671,36 @@ def build_parser() -> argparse.ArgumentParser:
     idx.set_defaults(func=_cmd_index_album)
 
     reg = sub.add_parser(
-        "register-guests", help="Incrementally register guest references into SQLite."
+        "register-guests", help="Incrementally register local guest references into SQLite."
     )
     reg.add_argument("--references", required=True, help="Directory of references/<guest_id>/*")
     _add_db_args(reg)
     reg.set_defaults(func=_cmd_register_guests)
+
+    sg = sub.add_parser(
+        "seed-guests",
+        help="Pre-register local guest face folders directly into live gallery by username.",
+    )
+    sg.add_argument(
+        "--references",
+        default="data/references",
+        help="Directory with subfolders named by guest username (default: data/references)",
+    )
+    sg.add_argument("--admin-user", default=None, help="Gallery Admin username")
+    sg.add_argument(
+        "--apps-script-url",
+        default=None,
+        help="Apps Script Web App /exec URL (default: Silver Jubilee live deployment)",
+    )
+    sg.add_argument(
+        "--threshold",
+        type=float,
+        default=CALIBRATED_COSINE_THRESHOLD,
+        help=f"Cosine similarity threshold (default: {CALIBRATED_COSINE_THRESHOLD})",
+    )
+    sg.add_argument("--strategy", choices=("max_ref", "centroid", "hybrid"), default="max_ref")
+    _add_db_args(sg)
+    sg.set_defaults(func=_cmd_seed_guests)
 
     mt = sub.add_parser("match", help="Match cached face embeddings against active guest profiles.")
     mt.add_argument(
