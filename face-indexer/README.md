@@ -79,21 +79,16 @@ uv run ruff check src tests
 
 ---
 
-## Phase 2: Encrypted Local SQLite & Google Drive/Sheets Sync
+## Phase 2: Encrypted Local SQLite & Zero-Google-Cloud Sync
 
-### One-Time Google Cloud Desktop OAuth Setup (₹0 / Free)
-1. Open Google Cloud Console -> create/select a project -> enable **Google Drive API** and **Google Sheets API**.
-2. Go to **APIs & Services -> Credentials -> Create Credentials -> OAuth client ID -> Desktop app**.
-3. Download the JSON file and save it as `face-indexer/data/auth/credentials.json` (gitignored).
+No Google Cloud Console project, no billing, and no OAuth setup required — `face-indexer sync` authenticates directly with your existing Silver Jubilee Apps Script Web App using your **Admin username & password** (₹0 forever).
 
 ### Run Incremental Sync
 ```bash
 cd face-indexer
-uv run face-indexer sync \
-  --spreadsheet-id <SILVER_JUBILEE_GALLERY_DB_SPREADSHEET_ID> \
-  --threshold 0.50 \
-  --delete-refs
+uv run face-indexer sync --delete-refs
 ```
+*(You will be prompted for your existing Gallery Admin username and password. Your password is never stored on disk, and the temporary session token is revoked immediately when sync finishes.)*
 
 What `sync` does on every run:
 1. Pulls guest `CONFIRMED` / `REJECTED` reviews from `FACE_MATCHES` into local SQLite.

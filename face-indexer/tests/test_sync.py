@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import base64
+import json
 import shutil
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
+import requests
 from numpy.typing import NDArray
 from PIL import Image
 
@@ -21,6 +24,7 @@ from face_indexer.recognizer import DetectedFace, FaceRecognitionEngine, PhotoAn
 from face_indexer.storage import SQLiteFaceStore
 from face_indexer.sync import (
     PROTECTED_REVIEW_STATUSES,
+    AppsScriptBackend,
     PhotoProcessingRecord,
     RemoteFaceMatch,
     RemoteFaceProfile,
@@ -305,3 +309,107 @@ def test_full_sync_cycle_review_preservation_and_withdrawal(tmp_path: Path) -> N
     assert backend.profiles["ruby"].status == "REVOKED"
     assert backend.matches[("PHOTO_001", "ruby")].status == "REVOKED"
     assert len(store.get_guest_profiles()) == 0
+
+
+def test_apps_script_backend_end_to_end(tmp_path: Path) -> None:
+    emb_navneet = _unit_vec(99)
+    stub = _StubEngine({50: [emb_navneet]})
+    engine = cast(FaceRecognitionEngine, stub)
+
+    ref_img = _make_dummy_jpeg(tmp_path / "ref.jpg", (50, 10, 10))
+    photo_img = _make_dummy_jpeg(tmp_path / "album_p1.jpg", (50, 20, 20))
+    ref_b64 = "data:image/jpeg;base64," + base64.b64encode(ref_img.read_bytes()).decode()
+    photo_b64 = "data:image/jpeg;base64," + base64.b64encode(photo_img.read_bytes()).decode()
+
+    calls: list[str] = []
+
+    class _FakeResp:
+        def __init__(self, payload: dict[str, Any]) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, Any]:
+            return self._payload
+
+    class _FakeSession:
+        def post(self, url: str, data: str, **kwargs: Any) -> _FakeResp:
+            body = json.loads(data)
+            action = body["action"]
+            args = body["args"]
+            calls.append(action)
+
+            if action == "adminLogin":
+                assert args == ["admin", "secret"]
+                return _FakeResp({"ok": True, "token": "adm_tok_123"})
+            if action == "adminSyncGetState":
+                return _FakeResp(
+                    {
+                        "ok": True,
+                        "photos": [
+                            {
+                                "photo_id": "pho_1",
+                                "original_filename": "album_p1.jpg",
+                                "file_hash": compute_file_sha256(photo_img),
+                                "status": "ACTIVE",
+                            }
+                        ],
+                        "profiles": [
+                            {
+                                "guest_id": "gst_navneet",
+                                "display_name": "Navneet",
+                                "status": "PENDING_PROCESSING",
+                                "consent": "GRANTED",
+                                "profile_version": 1,
+                            }
+                        ],
+                        "matches": [],
+                    }
+                )
+            if action == "adminSyncListGuestRefs":
+                return _FakeResp(
+                    {"ok": True, "files": [{"file_id": "ref_f1", "filename": "ref.jpg"}]}
+                )
+            if action == "adminSyncDownloadRef":
+                return _FakeResp({"ok": True, "dataUrl": ref_b64})
+            if action == "adminSyncDeleteRef":
+                return _FakeResp({"ok": True, "deleted": True})
+            if action == "adminSyncDownloadPhoto":
+                return _FakeResp({"ok": True, "dataUrl": photo_b64})
+            if action == "adminSyncUpdateProfileStatus":
+                assert args[0] == "gst_navneet"
+                assert args[1] == "ACTIVE"
+                return _FakeResp({"ok": True})
+            if action == "adminSyncLogPhotoProcessing":
+                assert len(args[0]) == 1
+                return _FakeResp({"ok": True, "logged": 1})
+            if action == "adminSyncPushMatches":
+                assert len(args[0]) == 1
+                assert args[0][0]["photo_id"] == "pho_1"
+                assert args[0][0]["guest_id"] == "gst_navneet"
+                assert args[0][0]["status"] == "PENDING"
+                return _FakeResp({"ok": True, "pushed": 1})
+            if action == "adminLogout":
+                return _FakeResp({"ok": True})
+            raise AssertionError(f"Unexpected action: {action}")
+
+    store = SQLiteFaceStore(tmp_path / "gas_sync.db")
+    with AppsScriptBackend(
+        apps_script_url="https://script.google.com/fake/exec",
+        admin_username="admin",
+        admin_password="secret",
+        session=cast(requests.Session, _FakeSession()),
+    ) as backend:
+        report = run_sync(
+            backend, store, engine, threshold=0.50, delete_refs_after_processing=True
+        )
+
+    assert report.profiles_processed == 1
+    assert report.photos_newly_indexed == 1
+    assert report.suggestions_pushed == 1
+    assert "adminLogin" in calls
+    assert "adminSyncDeleteRef" in calls
+    assert "adminSyncPushMatches" in calls
+    assert "adminLogout" in calls
+

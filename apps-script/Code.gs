@@ -76,7 +76,15 @@ function doPost(e) {
       adminListPhotos: adminListPhotos,
       adminGetPhotoVariant: adminGetPhotoVariant,
       adminModeratePhoto: adminModeratePhoto,
-      adminExportMetadataCsv: adminExportMetadataCsv
+      adminExportMetadataCsv: adminExportMetadataCsv,
+      adminSyncGetState: adminSyncGetState,
+      adminSyncDownloadPhoto: adminSyncDownloadPhoto,
+      adminSyncListGuestRefs: adminSyncListGuestRefs,
+      adminSyncDownloadRef: adminSyncDownloadRef,
+      adminSyncDeleteRef: adminSyncDeleteRef,
+      adminSyncPushMatches: adminSyncPushMatches,
+      adminSyncUpdateProfileStatus: adminSyncUpdateProfileStatus,
+      adminSyncLogPhotoProcessing: adminSyncLogPhotoProcessing
     };
 
     if (!Object.prototype.hasOwnProperty.call(handlers, action)) {

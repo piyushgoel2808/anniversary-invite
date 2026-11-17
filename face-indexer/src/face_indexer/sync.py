@@ -10,6 +10,8 @@ Architecture invariants:
 
 from __future__ import annotations
 
+import base64
+import contextlib
 import datetime
 import json
 import os
@@ -18,6 +20,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
+
+import requests
 
 from face_indexer.imaging import load_image_bgr
 from face_indexer.indexer import (
@@ -30,6 +34,11 @@ from face_indexer.matcher import ScoringStrategy
 from face_indexer.models import COMBINED_MODEL_VERSION
 from face_indexer.recognizer import FaceRecognitionEngine
 from face_indexer.storage import SQLiteFaceStore
+
+DEFAULT_APPS_SCRIPT_URL = (
+    "https://script.google.com/macros/s/"
+    "AKfycbzwdnvh5-p_inJpdrlkHzm6QL_JRoBnXZTzJuaJdSLdLkrdUvoeO4hSBe61EhPo938m/exec"
+)
 
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/drive",
@@ -121,6 +130,7 @@ class RemoteReferenceFile:
     file_id: str
     filename: str
     mime_type: str = "image/jpeg"
+    guest_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -172,6 +182,200 @@ class GalleryBackend(Protocol):
     ) -> None: ...
 
     def upsert_photo_processing(self, records: list[PhotoProcessingRecord]) -> None: ...
+
+
+def _decode_data_url_to_file(data_url: str, dest_path: Path) -> Path:
+    """Decode a Base64 data URL (or raw Base64) and write bytes to dest_path."""
+    payload = data_url.strip()
+    if "," in payload and "base64" in payload.split(",", 1)[0].lower():
+        payload = payload.split(",", 1)[1].strip()
+    raw_bytes = base64.b64decode(payload)
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    dest_path.write_bytes(raw_bytes)
+    return dest_path
+
+
+class AppsScriptBackend:
+    """Zero-Google-Cloud backend syncing directly with the Apps Script Web App.
+
+    Uses the family's existing Admin login (adminLogin -> signed 4-hour token -> adminLogout).
+    Requires ZERO Google Cloud Console project, ZERO OAuth client JSON, and ₹0 forever.
+    """
+
+    def __init__(
+        self,
+        *,
+        apps_script_url: str,
+        admin_username: str,
+        admin_password: str,
+        photo_variant: str = "original",
+        timeout_seconds: int = 120,
+        session: requests.Session | None = None,
+    ) -> None:
+        self.apps_script_url = apps_script_url
+        self.photo_variant = photo_variant
+        self.timeout_seconds = timeout_seconds
+        self._http = session or requests.Session()
+        self._state_cache: dict[str, Any] | None = None
+        self._token = self._login(admin_username, admin_password)
+
+    def __enter__(self) -> AppsScriptBackend:
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self.close()
+
+    def close(self) -> None:
+        if self._token:
+            with contextlib.suppress(Exception):
+                self._call("adminLogout", [self._token])
+            self._token = ""
+
+    def _call(self, action: str, args: list[Any]) -> dict[str, Any]:
+        resp = self._http.post(
+            self.apps_script_url,
+            data=json.dumps({"action": action, "args": args}),
+            headers={"Content-Type": "text/plain;charset=utf-8"},
+            timeout=self.timeout_seconds,
+            allow_redirects=True,
+        )
+        resp.raise_for_status()
+        data: Any = resp.json()
+        if not isinstance(data, dict):
+            raise RuntimeError(f"Unexpected response from Apps Script action '{action}'.")
+        if not data.get("ok"):
+            raise RuntimeError(str(data.get("error") or f"Apps Script '{action}' failed."))
+        return data
+
+    def _login(self, username: str, password: str) -> str:
+        res = self._call("adminLogin", [username, password])
+        token = str(res.get("token") or "")
+        if not token:
+            raise RuntimeError("Admin login succeeded but returned no session token.")
+        return token
+
+    def _get_state(self, *, force_refresh: bool = False) -> dict[str, Any]:
+        if self._state_cache is None or force_refresh:
+            self._state_cache = self._call("adminSyncGetState", [self._token])
+        return self._state_cache
+
+    def ensure_face_sheets(self) -> None:
+        # adminSyncGetState ensures all 4 face sheets exist and fetches current state in 1 call
+        self._get_state(force_refresh=True)
+
+    def list_active_photos(self) -> list[RemotePhoto]:
+        state = self._get_state()
+        return [
+            RemotePhoto(
+                photo_id=str(p["photo_id"]),
+                drive_file_id=str(p.get("drive_file_id", p["photo_id"])),
+                medium_image_id=str(p.get("medium_image_id", "")),
+                original_filename=str(p.get("original_filename", f"{p['photo_id']}.jpg")),
+                file_hash=str(p.get("file_hash", "")),
+                status=str(p.get("status", "ACTIVE")),
+            )
+            for p in state.get("photos", [])
+        ]
+
+    def list_face_profiles(self) -> list[RemoteFaceProfile]:
+        state = self._get_state()
+        return [
+            RemoteFaceProfile(
+                guest_id=str(p["guest_id"]),
+                display_name=str(p.get("display_name", p["guest_id"])),
+                status=str(p.get("status", "PENDING_PROCESSING")).upper(),
+                consent=str(p.get("consent", "")).upper(),
+                submitted_at=str(p.get("submitted_at", "")),
+                processed_at=str(p.get("processed_at", "")),
+                profile_version=int(p.get("profile_version", 1) or 1),
+            )
+            for p in state.get("profiles", [])
+        ]
+
+    def list_face_matches(self) -> list[RemoteFaceMatch]:
+        state = self._get_state()
+        return [
+            RemoteFaceMatch(
+                photo_id=str(m["photo_id"]),
+                guest_id=str(m["guest_id"]),
+                confidence=float(m.get("confidence", 0.0) or 0.0),
+                status=str(m.get("status", "PENDING")).upper(),
+                model_version=str(m.get("model_version", COMBINED_MODEL_VERSION)),
+                reviewed_at=str(m.get("reviewed_at", "")),
+                reviewed_by=str(m.get("reviewed_by", "")),
+            )
+            for m in state.get("matches", [])
+        ]
+
+    def download_photo(self, remote_photo: RemotePhoto, dest_path: Path) -> Path:
+        res = self._call(
+            "adminSyncDownloadPhoto",
+            [remote_photo.photo_id, self._token, self.photo_variant],
+        )
+        return _decode_data_url_to_file(str(res["dataUrl"]), dest_path)
+
+    def list_guest_reference_files(self, guest_id: str) -> list[RemoteReferenceFile]:
+        res = self._call("adminSyncListGuestRefs", [guest_id, self._token])
+        return [
+            RemoteReferenceFile(
+                file_id=str(f["file_id"]),
+                filename=str(f["filename"]),
+                mime_type=str(f.get("mime_type", "image/jpeg")),
+                guest_id=guest_id,
+            )
+            for f in res.get("files", [])
+        ]
+
+    def download_reference_file(self, ref_file: RemoteReferenceFile, dest_path: Path) -> Path:
+        res = self._call(
+            "adminSyncDownloadRef",
+            [ref_file.guest_id, ref_file.file_id, self._token],
+        )
+        return _decode_data_url_to_file(str(res["dataUrl"]), dest_path)
+
+    def delete_reference_file(self, ref_file: RemoteReferenceFile) -> None:
+        self._call("adminSyncDeleteRef", [ref_file.guest_id, ref_file.file_id, self._token])
+
+    def upsert_face_matches(self, matches: list[RemoteFaceMatch]) -> int:
+        if not matches:
+            return 0
+        payload = [
+            {
+                "photo_id": m.photo_id,
+                "guest_id": m.guest_id,
+                "confidence": round(m.confidence, 4),
+                "status": m.status,
+                "model_version": m.model_version,
+                "reviewed_at": m.reviewed_at,
+                "reviewed_by": m.reviewed_by,
+            }
+            for m in matches
+        ]
+        res = self._call("adminSyncPushMatches", [payload, self._token])
+        return int(res.get("pushed", 0))
+
+    def update_face_profile_status(
+        self, guest_id: str, status: str, processed_at: str
+    ) -> None:
+        self._call(
+            "adminSyncUpdateProfileStatus",
+            [guest_id, status, processed_at, self._token],
+        )
+
+    def upsert_photo_processing(self, records: list[PhotoProcessingRecord]) -> None:
+        if not records:
+            return
+        payload = [
+            {
+                "photo_id": r.photo_id,
+                "processing_status": r.processing_status,
+                "processed_at": r.processed_at,
+                "model_version": r.model_version,
+                "error": r.error,
+            }
+            for r in records
+        ]
+        self._call("adminSyncLogPhotoProcessing", [payload, self._token])
 
 
 class GoogleWorkspaceBackend:

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -37,7 +39,12 @@ from face_indexer.models import (
 from face_indexer.recognizer import EngineConfig, FaceRecognitionEngine
 from face_indexer.report import write_html_report
 from face_indexer.storage import SQLiteFaceStore, load_or_create_encryption_key
-from face_indexer.sync import GoogleWorkspaceBackend, run_sync
+from face_indexer.sync import (
+    DEFAULT_APPS_SCRIPT_URL,
+    AppsScriptBackend,
+    GoogleWorkspaceBackend,
+    run_sync,
+)
 
 DEFAULT_DB_PATH = Path("data/indexer.db")
 DEFAULT_KEY_PATH = Path("data/.embedding_key")
@@ -247,21 +254,46 @@ def _cmd_sync(args: argparse.Namespace) -> int:
         models_dir=Path(args.models_dir),
         config=EngineConfig(enable_original_retry=not bool(args.no_original_retry)),
     )
-    backend = GoogleWorkspaceBackend(
-        spreadsheet_id=str(args.spreadsheet_id),
-        credentials_path=Path(args.credentials),
-        token_path=Path(args.token),
-        references_folder_id=args.references_folder_id,
-    )
-    report = run_sync(
-        backend,
-        store,
-        engine,
-        threshold=float(args.threshold),
-        strategy=cast(ScoringStrategy, args.strategy),
-        delete_refs_after_processing=bool(args.delete_refs),
-    )
-    print("\n=== Silver Jubilee Face Indexer — Google Sync Summary ===")
+
+    if args.spreadsheet_id:
+        google_backend = GoogleWorkspaceBackend(
+            spreadsheet_id=str(args.spreadsheet_id),
+            credentials_path=Path(args.credentials),
+            token_path=Path(args.token),
+            references_folder_id=args.references_folder_id,
+        )
+        report = run_sync(
+            google_backend,
+            store,
+            engine,
+            threshold=float(args.threshold),
+            strategy=cast(ScoringStrategy, args.strategy),
+            delete_refs_after_processing=bool(args.delete_refs),
+        )
+    else:
+        admin_user = args.admin_user or os.environ.get("FACE_INDEXER_ADMIN_USER") or ""
+        if not admin_user:
+            admin_user = input("Admin username: ").strip()
+        admin_pass = os.environ.get("FACE_INDEXER_ADMIN_PASSWORD") or ""
+        if not admin_pass:
+            admin_pass = getpass.getpass("Admin password: ")
+
+        with AppsScriptBackend(
+            apps_script_url=str(args.apps_script_url),
+            admin_username=admin_user,
+            admin_password=admin_pass,
+            photo_variant=str(args.variant),
+        ) as apps_backend:
+            report = run_sync(
+                apps_backend,
+                store,
+                engine,
+                threshold=float(args.threshold),
+                strategy=cast(ScoringStrategy, args.strategy),
+                delete_refs_after_processing=bool(args.delete_refs),
+            )
+
+    print("\n=== Silver Jubilee Face Indexer — Sync Summary ===")
     print(f"Reviews pulled:       {report.reviews_pulled}")
     print(f"Profiles processed:   {report.profiles_processed}")
     print(f"Profiles revoked:     {report.profiles_revoked}")
@@ -377,26 +409,45 @@ def build_parser() -> argparse.ArgumentParser:
     _add_db_args(st)
     st.set_defaults(func=_cmd_status)
 
-    sy = sub.add_parser("sync", help="Run incremental Google Drive & Sheets sync cycle.")
+    sy = sub.add_parser(
+        "sync",
+        help="Run incremental face sync (default: Apps Script Web App — zero Google Cloud needed).",
+    )
+    sy.add_argument(
+        "--apps-script-url",
+        default=DEFAULT_APPS_SCRIPT_URL,
+        help="Apps Script Web App /exec URL (default: Silver Jubilee live deployment)",
+    )
+    sy.add_argument(
+        "--admin-user",
+        default=None,
+        help="Gallery Admin username (or set FACE_INDEXER_ADMIN_USER; prompts if omitted)",
+    )
+    sy.add_argument(
+        "--variant",
+        choices=("original", "medium"),
+        default="original",
+        help="Photo variant downloaded from Apps Script for face detection (default: original)",
+    )
     sy.add_argument(
         "--spreadsheet-id",
-        required=True,
-        help="Google Spreadsheet ID for SILVER_JUBILEE_GALLERY_DB",
+        default=None,
+        help="Optional: use direct Google Cloud OAuth mode instead of Apps Script",
     )
     sy.add_argument(
         "--credentials",
         default=str(DEFAULT_CREDENTIALS_PATH),
-        help=f"Google OAuth client or service account JSON (default: {DEFAULT_CREDENTIALS_PATH})",
+        help="Google OAuth JSON (only for --spreadsheet-id mode)",
     )
     sy.add_argument(
         "--token",
         default=str(DEFAULT_TOKEN_PATH),
-        help=f"Cached OAuth token path (default: {DEFAULT_TOKEN_PATH})",
+        help=f"Cached OAuth token (only for --spreadsheet-id mode; default: {DEFAULT_TOKEN_PATH})",
     )
     sy.add_argument(
         "--references-folder-id",
         default=None,
-        help="Optional explicit Google Drive folder ID for FACE_REFERENCES",
+        help="Optional Drive folder ID for FACE_REFERENCES (only for --spreadsheet-id mode)",
     )
     sy.add_argument(
         "--threshold",
