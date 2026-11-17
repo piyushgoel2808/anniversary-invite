@@ -191,7 +191,12 @@
   <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Full-screen photograph viewer">
     <div class="lightbox-top">
       <span id="lightbox-counter" style="font-size:0.9rem;opacity:0.85;">1 / 1</span>
-      <button type="button" class="btn btn-secondary btn-sm" id="btn-close-lightbox">Close &times;</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-lb-download" aria-label="Download original photograph">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span id="btn-lb-download-label">Download Original</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-close-lightbox">Close &times;</button>
+      </div>
     </div>
 
     <div class="lightbox-stage" id="lightbox-stage">

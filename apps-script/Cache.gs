@@ -16,6 +16,7 @@ var CACHE_KEYS = {
   REVOKED_SHARD_PREFIX: 'v1_rev_sh_',
   REVOKED_VER_PREFIX: 'v1_rev_ver_',
   THROTTLE_PREFIX: 'v1_throttle_',
+  DOWNLOAD_THROTTLE_PREFIX: 'v1_dl_',
   PROP_PREFIX: 'v1_prop_'
 };
 

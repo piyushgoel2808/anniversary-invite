@@ -54,6 +54,7 @@ function doPost(e) {
       listGalleryPhotos: listGalleryPhotos,
       getPrivatePhoto: getPrivatePhoto,
       getPrivatePhotoBatch: getPrivatePhotoBatch,
+      downloadGuestOriginal: downloadGuestOriginal,
       uploadGuestPhotoBase64: uploadGuestPhotoBase64,
       deleteGuestPhoto: deleteGuestPhoto,
       editGuestPhoto: editGuestPhoto,

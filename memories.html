@@ -907,7 +907,12 @@
   <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Full-screen photograph viewer">
     <div class="lightbox-top">
       <span id="lightbox-counter" style="font-size:0.9rem;opacity:0.85;">1 / 1</span>
-      <button type="button" class="btn btn-secondary btn-sm" id="btn-close-lightbox">Close &times;</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button type="button" class="btn btn-primary btn-sm" id="btn-lb-download" aria-label="Download original photograph">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span id="btn-lb-download-label">Download Original</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-close-lightbox">Close &times;</button>
+      </div>
     </div>
 
     <div class="lightbox-stage" id="lightbox-stage">
@@ -937,7 +942,8 @@
   var ALLOWED_ACTIONS = [
     'guestLogin', 'checkGuestSession', 'guestLogout',
     'listGalleryPhotos', 'getPrivatePhoto', 'getPrivatePhotoBatch',
-    'uploadGuestPhotoBase64', 'deleteGuestPhoto', 'editGuestPhoto',
+    'downloadGuestOriginal', 'uploadGuestPhotoBase64',
+    'deleteGuestPhoto', 'editGuestPhoto',
     'adminLogin', 'adminCheckSession', 'adminLogout',
     'adminGetDashboard', 'adminListGuests', 'adminImportGuestsCsv',
     'adminUpdateGuest', 'adminListPhotos', 'adminGetPhotoVariant',
@@ -1010,7 +1016,8 @@
     thumbQueue: [],
     activeThumbCalls: 0,
     uploadQueue: [],     // [{ id, file, previewUrl, status, progress, error }]
-    isUploading: false
+    isUploading: false,
+    isDownloadingOriginal: false
   };
 
   // DOM References
@@ -1049,6 +1056,8 @@
   var lightboxDate = document.getElementById('lightbox-date');
   var lightboxCounter = document.getElementById('lightbox-counter');
   var lightboxStage = document.getElementById('lightbox-stage');
+  var lightboxDownloadBtn = document.getElementById('btn-lb-download');
+  var lightboxDownloadLabel = document.getElementById('btn-lb-download-label');
   var toastEl = document.getElementById('toast');
 
   var toastTimer = null;
@@ -1110,6 +1119,28 @@
 
   var galleryGen = 0;
   var uploadSessionGen = 0;
+  var downloadSessionGen = 0;
+
+  function setDownloadButtonBusy(busy) {
+    state.isDownloadingOriginal = busy;
+    if (lightboxDownloadBtn) lightboxDownloadBtn.disabled = busy;
+    if (lightboxDownloadLabel) {
+      lightboxDownloadLabel.textContent = busy ? 'Downloading...' : 'Download Original';
+    }
+  }
+
+  function dataUrlToBlob(dataUrl, fallbackMime) {
+    var parts = String(dataUrl || '').split(',');
+    var mimeMatch = parts[0] && parts[0].match(/data:([^;]+);base64/i);
+    var mime = (mimeMatch && mimeMatch[1]) || fallbackMime || 'application/octet-stream';
+    var bin = atob(parts[1] || '');
+    var len = bin.length;
+    var bytes = new Uint8Array(len);
+    for (var i = 0; i < len; i++) {
+      bytes[i] = bin.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  }
 
   function clearUploadQueue() {
     (state.uploadQueue || []).forEach(function (q) {
@@ -1127,6 +1158,8 @@
   function returnToLogin(message) {
     galleryGen++;
     uploadSessionGen++;
+    downloadSessionGen++;
+    setDownloadButtonBusy(false);
     state.isLoadingPage = false;
     state.token = '';
     state.guest = null;
@@ -1564,6 +1597,50 @@
   document.getElementById('btn-close-lightbox').addEventListener('click', closeLightbox);
   document.getElementById('btn-lb-prev').addEventListener('click', function () { stepLightbox(-1); });
   document.getElementById('btn-lb-next').addEventListener('click', function () { stepLightbox(1); });
+
+  if (lightboxDownloadBtn) {
+    lightboxDownloadBtn.addEventListener('click', function () {
+      if (state.isDownloadingOriginal || !state.token) return;
+      var meta = state.photos[state.lightboxIndex];
+      if (!meta || !meta.photo_id) return;
+
+      var dlGen = downloadSessionGen;
+      setDownloadButtonBusy(true);
+      showToast('Preparing original photograph...');
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (dlGen !== downloadSessionGen) return;
+          setDownloadButtonBusy(false);
+          if (!res || !res.ok || !res.dataUrl) {
+            if (!handleServerAuthError(res && res.error)) {
+              showToast((res && res.error) || 'Could not download original photograph.', true);
+            }
+            return;
+          }
+          try {
+            var blob = dataUrlToBlob(res.dataUrl, res.mimeType);
+            var blobUrl = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = res.filename || (meta.photo_id + '.jpg');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 5000);
+            showToast('Original photograph downloaded.');
+          } catch (err) {
+            showToast('Download could not start on this browser.', true);
+          }
+        })
+        .withFailureHandler(function () {
+          if (dlGen !== downloadSessionGen) return;
+          setDownloadButtonBusy(false);
+          showToast('Network error downloading original. Please try again.', true);
+        })
+        .downloadGuestOriginal(meta.photo_id, state.token);
+    });
+  }
 
   document.addEventListener('keydown', function (e) {
     if (lightboxEl.classList.contains('hidden')) return;

@@ -52,6 +52,8 @@ var APP_CONFIG = {
     MAX_MEDIUM_BASE64_CHARS: 1500000, // ~1.1 MB safety bound
     LOGIN_MAX_ATTEMPTS: 5,
     LOGIN_LOCKOUT_SECONDS: 15 * 60, // 15 minutes
+    DOWNLOAD_MAX_PER_WINDOW: 60, // Generous per-guest burst limit to protect Drive quota
+    DOWNLOAD_WINDOW_SECONDS: 10 * 60, // 10-minute window
     PAGE_SIZE_DEFAULT: 24,
     PAGE_SIZE_MAX: 36,
     BATCH_THUMB_MAX: 6,

@@ -230,6 +230,64 @@ function getPrivatePhotoBatch(photoIds, sessionToken) {
 }
 
 /**
+ * Dedicated Authenticated Endpoint: Single-Photo Original Download for Active Guests.
+ *
+ * SECURITY & QUOTA RULES:
+ * - Requires a valid, active guest session token (any active guest may download).
+ * - Accepts ONLY opaque application photoId (rejects arbitrary Drive IDs).
+ * - Rejects hidden, deleted, or delete_failed photos.
+ * - Enforces a generous per-guest burst limit (60 downloads / 10 min) to protect Drive quota.
+ * - Reads private Drive file server-side; never exposes Drive file IDs or Drive URLs.
+ */
+function downloadGuestOriginal(photoId, sessionToken) {
+  try {
+    var ctx = verifyGuestSession_(sessionToken, false);
+    var guestId = ctx.guest.guest_id;
+
+    // Soft per-guest sliding-window burst limit
+    var dlKey = CACHE_KEYS.DOWNLOAD_THROTTLE_PREFIX + guestId;
+    var nowSec = Math.floor(Date.now() / 1000);
+    var winSec = APP_CONFIG.LIMITS.DOWNLOAD_WINDOW_SECONDS;
+    var dlState = cacheGetJson_(dlKey);
+    if (!dlState || !dlState.resetAt || nowSec >= dlState.resetAt) {
+      dlState = { count: 0, resetAt: nowSec + winSec };
+    }
+    if (dlState.count >= APP_CONFIG.LIMITS.DOWNLOAD_MAX_PER_WINDOW) {
+      var waitMin = Math.max(1, Math.ceil((dlState.resetAt - nowSec) / 60));
+      throw new Error('RATE_LIMITED: Download limit reached. Please wait ' + waitMin + ' minute(s) and try again.');
+    }
+
+    var cleanId = String(photoId || '').trim();
+    if (!cleanId || cleanId.indexOf('pho_') !== 0) {
+      throw new Error('NOT_FOUND: Invalid photo reference.');
+    }
+
+    var photoIndex = loadPhotosIndex_(false);
+    var photo = photoIndex.byId[cleanId];
+    if (!photo || photo.status !== 'active') {
+      throw new Error('NOT_FOUND: Photograph is unavailable.');
+    }
+
+    dlState.count += 1;
+    cachePutJson_(dlKey, dlState, Math.max(60, dlState.resetAt - nowSec));
+
+    var originalData = readPrivateImageAsDataUrl_(photo.drive_file_id, photo.mime_type);
+    var safeName = sanitizeFilename_(photo.original_filename || (cleanId + mimeToExtension_(originalData.mimeType)));
+
+    return {
+      ok: true,
+      photo_id: cleanId,
+      filename: safeName,
+      mimeType: originalData.mimeType,
+      sizeBytes: originalData.sizeBytes,
+      dataUrl: originalData.dataUrl
+    };
+  } catch (e) {
+    return { ok: false, error: e.message || 'Unable to download original photograph.' };
+  }
+}
+
+/**
  * Explicit backend permission guards: guests can NEVER delete or modify photos.
  */
 function deleteGuestPhoto(photoId, sessionToken) {

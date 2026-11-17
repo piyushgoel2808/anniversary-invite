@@ -76,9 +76,20 @@ function runPhase8SecurityTestSuite_() {
   var driveIdAttempt = getPrivatePhoto(photoRec.drive_file_id, guestToken, 'thumbnail');
   assert('8. Arbitrary Drive file ID rejected by photo proxy', !driveIdAttempt.ok);
 
-  // Guest requesting original variant MUST be FORBIDDEN
+  // Guest requesting original via display proxy MUST remain FORBIDDEN
   var origAttempt = getPrivatePhoto(photoId, guestToken, 'original');
-  assert('9. Guest blocked from accessing original photo (FORBIDDEN)', !origAttempt.ok && origAttempt.error.indexOf('FORBIDDEN') !== -1);
+  assert('9. Guest display proxy blocks original variant (FORBIDDEN)', !origAttempt.ok && origAttempt.error.indexOf('FORBIDDEN') !== -1);
+
+  // Authenticated active guest downloading untouched original via dedicated endpoint succeeds (zero Drive IDs leaked)
+  var dlOk = downloadGuestOriginal(photoId, guestToken);
+  var dlNoAuth = downloadGuestOriginal(photoId, '');
+  var dlRawDriveId = downloadGuestOriginal(photoRec.drive_file_id, guestToken);
+  assert(
+    '9b. Authenticated guest downloads untouched original with zero Drive IDs exposed',
+    dlOk.ok && dlOk.dataUrl.indexOf('data:image/png;base64,') === 0 && !dlOk.drive_file_id
+  );
+  assert('9c. Unauthenticated original download rejected (UNAUTHORIZED)', !dlNoAuth.ok && dlNoAuth.error.indexOf('UNAUTHORIZED') !== -1);
+  assert('9d. Raw Drive file ID rejected by original download endpoint', !dlRawDriveId.ok);
 
   // Guest attempting delete or edit MUST be FORBIDDEN
   var delAttempt = deleteGuestPhoto(photoId, guestToken);

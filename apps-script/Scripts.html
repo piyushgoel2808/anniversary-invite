@@ -23,7 +23,8 @@
     thumbQueue: [],
     activeThumbCalls: 0,
     uploadQueue: [],     // [{ id, file, previewUrl, status, progress, error }]
-    isUploading: false
+    isUploading: false,
+    isDownloadingOriginal: false
   };
 
   // DOM References
@@ -62,6 +63,8 @@
   var lightboxDate = document.getElementById('lightbox-date');
   var lightboxCounter = document.getElementById('lightbox-counter');
   var lightboxStage = document.getElementById('lightbox-stage');
+  var lightboxDownloadBtn = document.getElementById('btn-lb-download');
+  var lightboxDownloadLabel = document.getElementById('btn-lb-download-label');
   var toastEl = document.getElementById('toast');
 
   var toastTimer = null;
@@ -123,6 +126,28 @@
 
   var galleryGen = 0;
   var uploadSessionGen = 0;
+  var downloadSessionGen = 0;
+
+  function setDownloadButtonBusy(busy) {
+    state.isDownloadingOriginal = busy;
+    if (lightboxDownloadBtn) lightboxDownloadBtn.disabled = busy;
+    if (lightboxDownloadLabel) {
+      lightboxDownloadLabel.textContent = busy ? 'Downloading...' : 'Download Original';
+    }
+  }
+
+  function dataUrlToBlob(dataUrl, fallbackMime) {
+    var parts = String(dataUrl || '').split(',');
+    var mimeMatch = parts[0] && parts[0].match(/data:([^;]+);base64/i);
+    var mime = (mimeMatch && mimeMatch[1]) || fallbackMime || 'application/octet-stream';
+    var bin = atob(parts[1] || '');
+    var len = bin.length;
+    var bytes = new Uint8Array(len);
+    for (var i = 0; i < len; i++) {
+      bytes[i] = bin.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mime });
+  }
 
   function clearUploadQueue() {
     (state.uploadQueue || []).forEach(function (q) {
@@ -140,6 +165,8 @@
   function returnToLogin(message) {
     galleryGen++;
     uploadSessionGen++;
+    downloadSessionGen++;
+    setDownloadButtonBusy(false);
     state.isLoadingPage = false;
     state.token = '';
     state.guest = null;
@@ -577,6 +604,50 @@
   document.getElementById('btn-close-lightbox').addEventListener('click', closeLightbox);
   document.getElementById('btn-lb-prev').addEventListener('click', function () { stepLightbox(-1); });
   document.getElementById('btn-lb-next').addEventListener('click', function () { stepLightbox(1); });
+
+  if (lightboxDownloadBtn) {
+    lightboxDownloadBtn.addEventListener('click', function () {
+      if (state.isDownloadingOriginal || !state.token) return;
+      var meta = state.photos[state.lightboxIndex];
+      if (!meta || !meta.photo_id) return;
+
+      var dlGen = downloadSessionGen;
+      setDownloadButtonBusy(true);
+      showToast('Preparing original photograph...');
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (dlGen !== downloadSessionGen) return;
+          setDownloadButtonBusy(false);
+          if (!res || !res.ok || !res.dataUrl) {
+            if (!handleServerAuthError(res && res.error)) {
+              showToast((res && res.error) || 'Could not download original photograph.', true);
+            }
+            return;
+          }
+          try {
+            var blob = dataUrlToBlob(res.dataUrl, res.mimeType);
+            var blobUrl = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = res.filename || (meta.photo_id + '.jpg');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 5000);
+            showToast('Original photograph downloaded.');
+          } catch (err) {
+            showToast('Download could not start on this browser.', true);
+          }
+        })
+        .withFailureHandler(function () {
+          if (dlGen !== downloadSessionGen) return;
+          setDownloadButtonBusy(false);
+          showToast('Network error downloading original. Please try again.', true);
+        })
+        .downloadGuestOriginal(meta.photo_id, state.token);
+    });
+  }
 
   document.addEventListener('keydown', function (e) {
     if (lightboxEl.classList.contains('hidden')) return;
