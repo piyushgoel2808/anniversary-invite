@@ -303,8 +303,8 @@ function setAdminCredentials_(username, plainPassword) {
   if (!cleanUser || cleanUser.length < 3) {
     throw new Error('Admin username must be at least 3 valid characters.');
   }
-  if (!plainPassword || String(plainPassword).length < 10) {
-    throw new Error('Admin password must be at least 10 characters long.');
+  if (!plainPassword || String(plainPassword).length < 8) {
+    throw new Error('Admin password must be at least 8 characters long.');
   }
   var salt = generateSalt_();
   var hash = hashCredential_(String(plainPassword), salt, APP_CONFIG.LIMITS.ADMIN_HASH_ITERATIONS);
