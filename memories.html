@@ -1116,6 +1116,8 @@
             placeholder="e.g. rahul"
             autocomplete="username"
             autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
             required
           />
           <div class="form-hint">Enter your first name (uppercase or lowercase both work).</div>
@@ -1755,8 +1757,8 @@
   loginForm.addEventListener('submit', function (e) {
     e.preventDefault();
     loginErrorEl.textContent = '';
-    var username = (loginUserInput.value || '').trim();
-    var mobile = (loginMobileInput.value || '').trim();
+    var username = (loginUserInput.value || '').trim().toLowerCase().replace(/\s+/g, '');
+    var mobile = (loginMobileInput.value || '').replace(/[^\d+]/g, '').trim();
     if (!username || !mobile) {
       loginErrorEl.textContent = 'Please enter both username and registered mobile number.';
       loginErrorEl.className = 'alert-msg error';
