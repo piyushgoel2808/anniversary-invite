@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>Navneet &amp; Ruby — Silver Jubilee Memories Gallery</title>
+  <?!= include('Styles'); ?>
+</head>
+<body>
+
+  <!-- =====================================================================
+       1. GUEST LOGIN VIEW (Shown until authenticated)
+       ===================================================================== -->
+  <section id="login-view" class="auth-screen">
+    <div class="auth-card">
+      <svg class="lotus-emblem" viewBox="0 0 120 82" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="lotusS" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFFFFF"/>
+            <stop offset="50%" stop-color="#DCE3EE"/>
+            <stop offset="100%" stop-color="#9BA8BC"/>
+          </linearGradient>
+        </defs>
+        <path d="M60,64 C35,64 12,54 6,40 C22,38 42,46 60,64 Z" fill="#284B82" opacity="0.65" stroke="#1B3664" stroke-width="0.9"/>
+        <path d="M60,64 C85,64 108,54 114,40 C98,38 78,46 60,64 Z" fill="#284B82" opacity="0.65" stroke="#1B3664" stroke-width="0.9"/>
+        <path d="M60,64 C38,52 20,32 22,16 C38,22 50,38 60,64 Z" fill="url(#lotusS)" stroke="#526582" stroke-width="1"/>
+        <path d="M60,64 C82,52 100,32 98,16 C82,22 70,38 60,64 Z" fill="url(#lotusS)" stroke="#526582" stroke-width="1"/>
+        <path d="M60,65 C49,42 49,18 60,3 C71,18 71,42 60,65 Z" fill="url(#lotusS)" stroke="#1B3664" stroke-width="1.1"/>
+      </svg>
+
+      <p class="serif-caps">25 Years Together</p>
+      <h1 class="script-heading auth-title">Navneet &amp; Ruby</h1>
+      <p class="auth-sub">
+        Welcome to our private Silver Jubilee photo album. Sign in with your guest username and registered mobile number.
+      </p>
+
+      <form id="guest-login-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="login-username">Guest Username</label>
+          <input
+            type="text"
+            id="login-username"
+            class="form-input"
+            placeholder="e.g. rahul123"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="login-mobile">Registered Mobile Number</label>
+          <div class="input-wrap">
+            <input
+              type="password"
+              id="login-mobile"
+              class="form-input"
+              placeholder="10-digit mobile number"
+              inputmode="tel"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" class="toggle-pw" id="btn-toggle-pw">Show</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;" id="btn-login-submit">
+          Enter Memories Gallery
+        </button>
+        <div class="alert-msg" id="login-error" role="alert" aria-live="polite"></div>
+      </form>
+
+      <div class="privacy-pill">
+        <span>Private family gallery &bull; Invited guests only</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================================
+       2. AUTHENTICATED GALLERY APPLICATION
+       ===================================================================== -->
+  <div id="gallery-view" class="hidden">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-block">
+          <div>
+            <h1 class="script-heading brand-title">Silver Jubilee Memories</h1>
+            <p class="brand-guest" id="guest-welcome-label">Welcome</p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-open-upload">
+            + Upload Photos
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-logout">
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="gallery-container">
+      <div class="gallery-meta-bar">
+        <span id="gallery-count-label">Loading album...</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-gallery">Refresh</button>
+      </div>
+
+      <!-- Loading Skeleton -->
+      <div id="gallery-skeleton" class="skeleton-grid">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="gallery-empty" class="empty-state hidden">
+        <h2 class="script-heading" style="font-size:2rem;margin-bottom:8px;">Begin the Album</h2>
+        <p style="color:var(--text-muted);line-height:1.5;margin-bottom:18px;">
+          No photographs have been shared yet. Be the first to add a cherished memory from Navneet &amp; Ruby's 25th Anniversary!
+        </p>
+        <button type="button" class="btn btn-primary" id="btn-empty-upload">Upload First Photograph</button>
+      </div>
+
+      <!-- Responsive Balanced Masonry Collage -->
+      <div id="masonry-grid" class="masonry-grid hidden" aria-live="polite"></div>
+
+      <!-- Pagination Controls -->
+      <div id="load-more-wrap" class="load-more-wrap hidden">
+        <button type="button" class="btn btn-secondary" id="btn-load-more">
+          Load More Photographs
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- =====================================================================
+       3. MULTI-IMAGE UPLOAD MODAL
+       ===================================================================== -->
+  <div id="upload-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div>
+          <h2 id="upload-modal-title" class="script-heading" style="font-size:1.9rem;">Share Your Memories</h2>
+          <p style="font-size:0.84rem;color:var(--text-muted);">JPEG, PNG or WebP &bull; Up to 10 MB per photograph &bull; Unlimited uploads</p>
+        </div>
+        <button type="button" class="modal-close" id="btn-close-upload" aria-label="Close upload dialog">&times;</button>
+      </div>
+
+      <div id="upload-dropzone" class="dropzone" tabindex="0" role="button">
+        <p style="font-size:1rem;font-weight:600;color:var(--royal-blue);margin-bottom:6px;">
+          Tap to select photos or drag &amp; drop here
+        </p>
+        <p style="font-size:0.84rem;color:var(--text-muted);">
+          Select multiple photographs at once. Originals are saved privately for the family.
+        </p>
+        <input
+          type="file"
+          id="file-picker-input"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          class="hidden"
+        />
+      </div>
+
+      <!-- Hidden form used for native Apps Script Blob transport of originals -->
+      <form id="hidden-blob-form" class="hidden">
+        <input type="file" name="originalFile" id="hidden-original-file" />
+        <input type="hidden" name="sessionToken" id="hidden-session-token" />
+        <input type="hidden" name="originalFilename" id="hidden-original-name" />
+        <input type="hidden" name="thumbBase64" id="hidden-thumb-b64" />
+        <input type="hidden" name="mediumBase64" id="hidden-medium-b64" />
+        <input type="hidden" name="width" id="hidden-width" />
+        <input type="hidden" name="height" id="hidden-height" />
+      </form>
+
+      <div id="upload-queue-list" class="queue-list"></div>
+
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary btn-sm hidden" id="btn-retry-failed">Retry Failed</button>
+        <button type="button" class="btn btn-primary" id="btn-start-upload" disabled>Upload Selected Photos</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       4. FULL-SCREEN LIGHTBOX (Swipe & Keyboard Navigation, Zero Delete/Edit)
+       ===================================================================== -->
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Full-screen photograph viewer">
+    <div class="lightbox-top">
+      <span id="lightbox-counter" style="font-size:0.9rem;opacity:0.85;">1 / 1</span>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-close-lightbox">Close &times;</button>
+    </div>
+
+    <div class="lightbox-stage" id="lightbox-stage">
+      <button type="button" class="lightbox-nav prev" id="btn-lb-prev" aria-label="Previous photograph">&#8249;</button>
+      <img id="lightbox-img" class="lightbox-img" src="" alt="Anniversary photograph" />
+      <button type="button" class="lightbox-nav next" id="btn-lb-next" aria-label="Next photograph">&#8250;</button>
+    </div>
+
+    <div class="lightbox-footer">
+      <div id="lightbox-author" style="font-size:1.05rem;font-weight:600;"></div>
+      <div id="lightbox-date" style="font-size:0.82rem;opacity:0.78;margin-top:2px;"></div>
+    </div>
+  </div>
+
+  <!-- Toast Banner -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <?!= include('Scripts'); ?>
+</body>
+</html>

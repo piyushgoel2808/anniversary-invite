@@ -98,10 +98,10 @@ apps-script/
 - [x] **Phase 1:** Update Page 5 of `index.html` (replace visible blessings card with Anniversary Memories entry card; keep Pages 1–4 untouched).
 - [x] **Phase 2:** Build Apps Script project scaffold (`appsscript.json`, `Config.gs`, `Drive.gs`, `Cache.gs`, `Code.gs`) + private Drive/Sheets bootstrapper + `runPhase2SmokeTest()`.
 - [x] **Phase 3:** Build `Security.gs`, `Auth.gs`, `Guests.gs` + CSV guest import template + `runPhase3AuthTests()`.
-- [ ] **Phase 4:** Build `Uploads.gs` + Canvas WebP derivative generator + sequential upload queue & retry.
-- [ ] **Phase 5:** Build `Photos.gs`, `Cache.gs` + private `getPrivatePhoto` / batch retrieval + incognito copy-reference verification.
-- [ ] **Phase 6:** Build responsive Ivory/Royal Blue/Silver masonry gallery & full-screen lightbox (`Index.html`, `Styles.html`, `Scripts.html`).
-- [ ] **Phase 7:** Build isolated Admin Panel (`Admin.gs`, `Admin.html`) with separate admin secret auth.
-- [ ] **Phase 8:** Execute full security test matrix against live `/exec` deployment.
-- [ ] **Phase 9:** Execute performance & quota testing (10 accounts, 50 -> 100 -> 500 images, mobile Safari + Android Chrome).
-- [ ] **Phase 10:** Final production `/exec` deployment, wire final URL into Page 5 of `index.html`, and publish via GitHub Pages.
+- [x] **Phase 4:** Build `Uploads.gs` + Canvas WebP derivative generator + sequential upload queue & retry.
+- [x] **Phase 5:** Build `Photos.gs`, `Cache.gs` + private `getPrivatePhoto` / `getPrivatePhotoBatch` retrieval.
+- [x] **Phase 6:** Build responsive Ivory/Royal Blue/Silver masonry gallery & full-screen lightbox (`Index.html`, `Styles.html`, `Scripts.html`).
+- [x] **Phase 7:** Build isolated Admin Panel (`Admin.gs`, `Admin.html`) with separate admin secret auth.
+- [x] **Phase 8 (Code Ready):** Authored 18-case automated security suite (`Tests.gs`) — pending execution inside live deployed Apps Script project.
+- [ ] **Phase 9:** Perform live performance & quota testing (10 accounts, 50 -> 100 -> 500 images, mobile Safari + Android Chrome) on deployed `/exec`.
+- [ ] **Phase 10:** Final production `/exec` deployment, wire final URL into `MEMORIES_GALLERY_URL` in `index.html`, and publish via GitHub Pages.

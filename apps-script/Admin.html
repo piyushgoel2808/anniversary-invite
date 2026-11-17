@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel — Silver Jubilee Memories Gallery</title>
+  <?!= include('Styles'); ?>
+</head>
+<body>
+
+  <!-- 1. ISOLATED ADMIN LOGIN -->
+  <section id="admin-login-view" class="auth-screen">
+    <div class="auth-card">
+      <p class="serif-caps">Administrator Console</p>
+      <h1 class="script-heading auth-title">Silver Jubilee</h1>
+      <p class="auth-sub">Sign in with your administrator credentials to manage guests, moderate photos, and download originals.</p>
+
+      <form id="admin-login-form" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="adm-user">Admin Username</label>
+          <input type="text" id="adm-user" class="form-input" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="adm-pass">Admin Password</label>
+          <input type="password" id="adm-pass" class="form-input" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;" id="btn-adm-login">Unlock Admin Panel</button>
+        <div class="alert-msg" id="adm-login-error" role="alert"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- 2. ADMIN DASHBOARD -->
+  <div id="admin-app-view" class="hidden">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div>
+          <h1 class="script-heading brand-title">Gallery Administration</h1>
+          <p class="brand-guest" id="adm-user-label">Administrator</p>
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-adm-export">Export Metadata CSV</button>
+          <button type="button" class="btn btn-danger btn-sm" id="btn-adm-logout">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="gallery-container">
+      <!-- KPI Summary -->
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="st-guests">0</div><div class="stat-label">Guests (Active)</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-photos">0</div><div class="stat-label">Active Photos</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-hidden">0</div><div class="stat-label">Hidden Photos</div></div>
+        <div class="stat-card"><div class="stat-value" id="st-storage">0 MB</div><div class="stat-label">Originals Stored</div></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-bar">
+        <button type="button" class="btn btn-secondary btn-sm tab-btn active" data-tab="photos">Photo Moderation</button>
+        <button type="button" class="btn btn-secondary btn-sm tab-btn" data-tab="guests">Guest Management &amp; CSV Import</button>
+      </div>
+
+      <!-- TAB: PHOTO MODERATION -->
+      <section id="tab-photos">
+        <div class="admin-panel-card">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+            <input type="text" id="photo-search" class="form-input" style="max-width:260px;" placeholder="Search by guest or filename..." />
+            <select id="photo-status-filter" class="form-select" style="max-width:160px;">
+              <option value="all">All Non-Deleted</option>
+              <option value="active">Active Only</option>
+              <option value="hidden">Hidden Only</option>
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-photo-search">Filter</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Preview</th>
+                  <th>Guest</th>
+                  <th>Filename &amp; Size</th>
+                  <th>Uploaded</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adm-photos-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: GUEST MANAGEMENT & CSV IMPORT -->
+      <section id="tab-guests" class="hidden">
+        <div class="admin-panel-card">
+          <h3 style="color:var(--royal-blue);margin-bottom:8px;">Bulk Import Guests via CSV</h3>
+          <p style="font-size:0.86rem;color:var(--text-muted);margin-bottom:10px;">
+            Columns required: <code>guest_name,username,mobile,upload_permission</code>. Mobile numbers are normalized, salted, hashed with HMAC-SHA-256 + pepper, and never stored in plaintext.
+          </p>
+          <input type="file" id="csv-file-input" accept=".csv,text/csv" style="margin-bottom:10px;" />
+          <textarea id="csv-text-input" class="form-textarea" style="height:105px;margin-bottom:10px;" placeholder="guest_name,username,mobile,upload_permission&#10;Rahul Sharma,rahul123,9876543210,true"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-import-csv">Import Guests</button>
+            <span id="csv-import-result" style="font-size:0.86rem;color:var(--royal-blue);font-weight:600;"></span>
+          </div>
+        </div>
+
+        <div class="admin-panel-card">
+          <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+            <input type="text" id="guest-search" class="form-input" style="max-width:260px;" placeholder="Search guest name or username..." />
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-guest-search">Search</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Guest Name</th>
+                  <th>Username</th>
+                  <th>Status</th>
+                  <th>Can Upload</th>
+                  <th>Controls</th>
+                </tr>
+              </thead>
+              <tbody id="adm-guests-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script>
+  (function () {
+    'use strict';
+    var ADMIN_TOKEN_KEY = 'sj_admin_session_token';
+    var adminToken = sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
+
+    var loginView = document.getElementById('admin-login-view');
+    var appView = document.getElementById('admin-app-view');
+    var loginErr = document.getElementById('adm-login-error');
+    var toastEl = document.getElementById('toast');
+
+    function showToast(msg, isError) {
+      toastEl.textContent = msg;
+      toastEl.className = 'toast' + (isError ? ' error' : '');
+      setTimeout(function () { toastEl.classList.add('hidden'); }, 3500);
+    }
+
+    function fmtSize(bytes) {
+      if (!bytes) return '0 MB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function enterAdmin(username) {
+      loginView.classList.add('hidden');
+      appView.classList.remove('hidden');
+      document.getElementById('adm-user-label').textContent = 'Signed in as ' + username;
+      loadDashboard();
+      loadPhotos();
+      loadGuests();
+    }
+
+    function exitAdmin() {
+      adminToken = '';
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+      appView.classList.add('hidden');
+      loginView.classList.remove('hidden');
+    }
+
+    document.getElementById('admin-login-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      loginErr.textContent = '';
+      var u = document.getElementById('adm-user').value.trim();
+      var p = document.getElementById('adm-pass').value;
+      var btn = document.getElementById('btn-adm-login');
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          btn.disabled = false;
+          if (!res || !res.ok) {
+            loginErr.textContent = (res && res.error) || 'Invalid credentials.';
+            loginErr.className = 'alert-msg error';
+            return;
+          }
+          adminToken = res.token;
+          sessionStorage.setItem(ADMIN_TOKEN_KEY, res.token);
+          document.getElementById('adm-pass').value = '';
+          enterAdmin(res.adminUsername);
+        })
+        .withFailureHandler(function () {
+          btn.disabled = false;
+          loginErr.textContent = 'Connection error.';
+          loginErr.className = 'alert-msg error';
+        })
+        .adminLogin(u, p);
+    });
+
+    document.getElementById('btn-adm-logout').addEventListener('click', function () {
+      var t = adminToken;
+      exitAdmin();
+      if (t) google.script.run.adminLogout(t);
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var tab = btn.dataset.tab;
+        document.getElementById('tab-photos').classList.toggle('hidden', tab !== 'photos');
+        document.getElementById('tab-guests').classList.toggle('hidden', tab !== 'guests');
+      });
+    });
+
+    function loadDashboard() {
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res || !res.ok) return;
+        document.getElementById('st-guests').textContent = res.stats.totalGuests + ' (' + res.stats.activeGuests + ')';
+        document.getElementById('st-photos').textContent = String(res.stats.activePhotos);
+        document.getElementById('st-hidden').textContent = String(res.stats.hiddenPhotos);
+        document.getElementById('st-storage').textContent = fmtSize(res.stats.totalOriginalBytes);
+      }).adminGetDashboard(adminToken);
+    }
+
+    function loadGuests() {
+      var q = document.getElementById('guest-search').value.trim();
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res || !res.ok) return;
+        var tbody = document.getElementById('adm-guests-tbody');
+        tbody.innerHTML = '';
+        res.guests.forEach(function (g) {
+          var tr = document.createElement('tr');
+          var td1 = document.createElement('td'); td1.textContent = g.guest_name;
+          var td2 = document.createElement('td'); td2.textContent = g.username;
+          var td3 = document.createElement('td');
+          var stBadge = document.createElement('span');
+          stBadge.className = 'badge ' + (g.status === 'active' ? 'badge-active' : 'badge-inactive');
+          stBadge.textContent = g.status;
+          td3.appendChild(stBadge);
+
+          var td4 = document.createElement('td');
+          td4.textContent = g.upload_permission ? 'Enabled' : 'Disabled';
+
+          var td5 = document.createElement('td');
+          var toggleStatus = document.createElement('button');
+          toggleStatus.className = 'btn btn-secondary btn-sm';
+          toggleStatus.textContent = g.status === 'active' ? 'Deactivate' : 'Activate';
+          toggleStatus.addEventListener('click', function () {
+            var nextSt = g.status === 'active' ? 'inactive' : 'active';
+            google.script.run.withSuccessHandler(function (r) {
+              if (r && r.ok) { showToast('Guest updated.'); loadGuests(); loadDashboard(); }
+            }).adminUpdateGuest(adminToken, g.guest_id, nextSt, g.upload_permission);
+          });
+
+          var toggleUp = document.createElement('button');
+          toggleUp.className = 'btn btn-secondary btn-sm';
+          toggleUp.style.marginLeft = '6px';
+          toggleUp.textContent = g.upload_permission ? 'Revoke Upload' : 'Allow Upload';
+          toggleUp.addEventListener('click', function () {
+            google.script.run.withSuccessHandler(function (r) {
+              if (r && r.ok) { showToast('Upload permission updated.'); loadGuests(); }
+            }).adminUpdateGuest(adminToken, g.guest_id, g.status, !g.upload_permission);
+          });
+
+          td5.appendChild(toggleStatus);
+          td5.appendChild(toggleUp);
+          tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+          tbody.appendChild(tr);
+        });
+      }).adminListGuests(adminToken, q);
+    }
+
+    function loadPhotos() {
+      var q = document.getElementById('photo-search').value.trim();
+      var sf = document.getElementById('photo-status-filter').value;
+      google.script.run.withSuccessHandler(function (res) {
+        if (!res || !res.ok) return;
+        var tbody = document.getElementById('adm-photos-tbody');
+        tbody.innerHTML = '';
+        res.photos.forEach(function (p) {
+          var tr = document.createElement('tr');
+
+          var tdPrev = document.createElement('td');
+          var prevBtn = document.createElement('button');
+          prevBtn.className = 'btn btn-secondary btn-sm';
+          prevBtn.textContent = 'Preview';
+          prevBtn.addEventListener('click', function () {
+            prevBtn.disabled = true;
+            google.script.run.withSuccessHandler(function (imgRes) {
+              if (imgRes && imgRes.ok) {
+                var img = document.createElement('img');
+                img.src = imgRes.dataUrl;
+                img.style.width = '64px'; img.style.borderRadius = '8px';
+                tdPrev.innerHTML = '';
+                tdPrev.appendChild(img);
+              }
+            }).adminGetPhotoVariant(adminToken, p.photo_id, 'thumbnail');
+          });
+          tdPrev.appendChild(prevBtn);
+
+          var tdGuest = document.createElement('td');
+          tdGuest.textContent = p.guest_name + ' (' + p.username + ')';
+
+          var tdFile = document.createElement('td');
+          tdFile.textContent = p.original_filename + ' (' + fmtSize(p.file_size) + ')';
+
+          var tdTime = document.createElement('td');
+          tdTime.textContent = p.upload_timestamp ? new Date(p.upload_timestamp).toLocaleString('en-IN') : '';
+
+          var tdStat = document.createElement('td');
+          var b = document.createElement('span');
+          b.className = 'badge ' + (p.status === 'active' ? 'badge-active' : 'badge-inactive');
+          b.textContent = p.status;
+          tdStat.appendChild(b);
+
+          var tdAct = document.createElement('td');
+          var dlBtn = document.createElement('button');
+          dlBtn.className = 'btn btn-secondary btn-sm';
+          dlBtn.textContent = 'Original';
+          dlBtn.addEventListener('click', function () {
+            showToast('Preparing original download...');
+            google.script.run.withSuccessHandler(function (r) {
+              if (!r || !r.ok) { showToast((r && r.error) || 'Download failed', true); return; }
+              var a = document.createElement('a');
+              a.href = r.dataUrl;
+              a.download = r.filename || (p.photo_id + '.jpg');
+              a.click();
+            }).adminGetPhotoVariant(adminToken, p.photo_id, 'original');
+          });
+
+          var hideBtn = document.createElement('button');
+          hideBtn.className = 'btn btn-secondary btn-sm';
+          hideBtn.style.marginLeft = '4px';
+          hideBtn.textContent = p.status === 'active' ? 'Hide' : 'Restore';
+          hideBtn.addEventListener('click', function () {
+            var act = p.status === 'active' ? 'hide' : 'restore';
+            google.script.run.withSuccessHandler(function (r) {
+              if (r && r.ok) { showToast('Photo updated.'); loadPhotos(); loadDashboard(); }
+            }).adminModeratePhoto(adminToken, p.photo_id, act);
+          });
+
+          var delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-danger btn-sm';
+          delBtn.style.marginLeft = '4px';
+          delBtn.textContent = 'Delete';
+          delBtn.addEventListener('click', function () {
+            if (!confirm('Permanently delete this photograph from Drive and the gallery?')) return;
+            google.script.run.withSuccessHandler(function (r) {
+              if (r && r.ok) { showToast('Photo deleted.'); loadPhotos(); loadDashboard(); }
+            }).adminModeratePhoto(adminToken, p.photo_id, 'delete');
+          });
+
+          tdAct.appendChild(dlBtn); tdAct.appendChild(hideBtn); tdAct.appendChild(delBtn);
+          tr.appendChild(tdPrev); tr.appendChild(tdGuest); tr.appendChild(tdFile);
+          tr.appendChild(tdTime); tr.appendChild(tdStat); tr.appendChild(tdAct);
+          tbody.appendChild(tr);
+        });
+      }).adminListPhotos(adminToken, q, sf, 1, 30);
+    }
+
+    document.getElementById('btn-photo-search').addEventListener('click', loadPhotos);
+    document.getElementById('btn-guest-search').addEventListener('click', loadGuests);
+
+    document.getElementById('csv-file-input').addEventListener('change', function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      var reader = new FileReader();
+      reader.onload = function () { document.getElementById('csv-text-input').value = reader.result; };
+      reader.readAsText(f);
+    });
+
+    document.getElementById('btn-import-csv').addEventListener('click', function () {
+      var csv = document.getElementById('csv-text-input').value.trim();
+      var resEl = document.getElementById('csv-import-result');
+      if (!csv) { resEl.textContent = 'Paste or choose a CSV file first.'; return; }
+      resEl.textContent = 'Importing & hashing credentials...';
+      google.script.run.withSuccessHandler(function (r) {
+        if (!r || !r.ok) { resEl.textContent = (r && r.error) || 'Import failed.'; return; }
+        resEl.textContent = 'Imported ' + r.importedCount + ' guest(s). Skipped duplicates: ' + (r.skippedDuplicates || []).length + '. Errors: ' + (r.errors || []).length;
+        loadGuests();
+        loadDashboard();
+      }).adminImportGuestsCsv(adminToken, csv);
+    });
+
+    document.getElementById('btn-adm-export').addEventListener('click', function () {
+      showToast('Exporting metadata to Drive ADMIN_EXPORTS/...');
+      google.script.run.withSuccessHandler(function (r) {
+        if (!r || !r.ok) { showToast((r && r.error) || 'Export failed', true); return; }
+        var blob = new Blob([r.csvText], { type: 'text/csv;charset=utf-8;' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = r.filename;
+        a.click();
+        showToast('Exported ' + r.rowCount + ' records (copy saved in Drive ADMIN_EXPORTS/).');
+      }).adminExportMetadataCsv(adminToken);
+    });
+
+    if (adminToken) {
+      google.script.run.withSuccessHandler(function (res) {
+        if (res && res.ok) enterAdmin(res.adminUsername);
+        else exitAdmin();
+      }).adminCheckSession(adminToken);
+    }
+  })();
+  </script>
+</body>
+</html>
