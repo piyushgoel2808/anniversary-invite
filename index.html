@@ -818,6 +818,51 @@
     }
 
     /* PAGE 5: Closing Sign-off & Anniversary Memories Entry Card */
+    .closing-block {
+      width: 100%;
+      max-width: 308px;
+      margin: 8px auto 6px auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .closing-label {
+      font-family: 'Baskerville', 'Palatino Linotype', Georgia, serif;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--soft-blue);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .closing-names {
+      font-family: 'Baskerville', 'Palatino Linotype', Georgia, serif;
+      font-size: 1.18rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: var(--royal-blue);
+      line-height: 1.35;
+    }
+
+    .closing-divider {
+      width: 96px;
+      height: 12px;
+      margin: 12px auto;
+      display: block;
+    }
+
+    .closing-family {
+      font-family: 'Baskerville', 'Palatino Linotype', Georgia, serif;
+      font-size: 0.96rem;
+      font-style: italic;
+      color: var(--text-muted);
+      margin-top: 4px;
+      letter-spacing: 0.03em;
+    }
+
     .memories-card {
       width: 100%;
       max-width: 308px;
@@ -1244,22 +1289,28 @@
            PAGE 5: LAST PAGE (Awaiting your presence, Blessings, Hosts, Memories Card)
            ================================================================= -->
       <section class="invite-page page-5" id="page-blessings" data-page="5">
-        <h2 class="script-heading script-title reveal-line" style="--line-delay: 60ms;">
+        <h2 class="script-heading script-title reveal-line" style="--line-delay: 60ms; margin-bottom: 12px;">
           Awaiting your presence
         </h2>
 
-        <p class="serif-body reveal-line" style="--line-delay: 120ms; color: var(--text-main); margin-top: 6px; line-height: 1.45;">
-          With the blessings of<br />
-          <strong style="color: var(--royal-blue);">Suresh &amp; Daya Goel</strong>
-        </p>
+        <div class="closing-block">
+          <div class="reveal-line" style="--line-delay: 120ms;">
+            <p class="closing-label">With the blessings of</p>
+            <p class="closing-names">Suresh &amp; Daya Goel</p>
+          </div>
 
-        <p class="serif-body reveal-line" style="--line-delay: 170ms; font-size: 1.12rem; font-weight: 600; color: var(--royal-blue); margin-top: 10px;">
-          With love from Piyush &amp; Aadish
-        </p>
+          <svg class="closing-divider reveal-line" style="--line-delay: 160ms;" viewBox="0 0 96 12" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="4" y1="6" x2="38" y2="6" stroke="#9AA8BC" stroke-width="0.9"/>
+            <polygon points="48,2 52,6 48,10 44,6" fill="#1B3664" opacity="0.8"/>
+            <line x1="58" y1="6" x2="92" y2="6" stroke="#9AA8BC" stroke-width="0.9"/>
+          </svg>
 
-        <p class="serif-body reveal-line" style="--line-delay: 220ms; color: var(--text-muted); font-style: italic; margin-top: 2px;">
-          The Goel Family
-        </p>
+          <div class="reveal-line" style="--line-delay: 200ms;">
+            <p class="closing-label">With love from</p>
+            <p class="closing-names">Piyush &amp; Aadish</p>
+            <p class="closing-family">The Goel Family</p>
+          </div>
+        </div>
 
         <!-- ANNIVERSARY MEMORIES GALLERY ENTRY CARD -->
         <div class="memories-card reveal-line" style="--line-delay: 290ms;">
