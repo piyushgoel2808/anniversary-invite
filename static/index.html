@@ -672,26 +672,27 @@
       min-height: 1.2em;
     }
 
-    /* PAGE 3: Silver Jubilee Celebration Video */
+    /* PAGE 3: Silver Jubilee Couple Portrait */
     .couple-stage-frame {
       position: relative;
       width: 260px;
-      height: 380px;
+      height: 440px;
       margin: 10px auto 6px auto;
       border-radius: 130px 130px 22px 22px;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #E8EEF5;
+      background: #F6ECE0;
       border: 2px solid var(--silver-mid);
       box-shadow: 0 14px 34px rgba(27, 54, 100, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
     }
 
-    .couple-video {
+    .couple-portrait {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: center 15%;
       display: block;
       border-radius: inherit;
     }
@@ -1211,23 +1212,14 @@
 
         <!-- Couple Portrait Stage (Silver Jubilee Lotus Arch) -->
         <div class="couple-stage-frame reveal-line" style="--line-delay: 220ms;">
-          <video
-            class="couple-video"
-            id="couple-anniversary-video"
+          <img
+            src="couple-portrait.jpg"
+            alt="Navneet &amp; Ruby Goel — Silver Jubilee Portrait"
             width="260"
-            height="380"
-            poster="couple-poster.jpg"
-            autoplay
-            loop
-            muted
-            playsinline
-            preload="metadata"
-            aria-label="Navneet &amp; Ruby Goel Silver Jubilee celebration"
-          >
-            <source src="couple-origami.mp4" type="video/mp4">
-            <source src="couple-video.mp4" type="video/mp4">
-            <img src="couple-poster.jpg" alt="Navneet &amp; Ruby Goel" width="260" height="380" class="couple-video" />
-          </video>
+            height="440"
+            class="couple-portrait"
+            decoding="async"
+          />
         </div>
       </section>
 
@@ -1841,22 +1833,6 @@
             }
           });
         }
-      }
-
-      /* Autoplay video helper across mobile devices */
-      const coupleVid = document.getElementById('couple-anniversary-video');
-      if (coupleVid) {
-        coupleVid.play().catch(() => {
-          const startPlayback = () => {
-            coupleVid.play();
-            window.removeEventListener('touchstart', startPlayback);
-            window.removeEventListener('click', startPlayback);
-            window.removeEventListener('scroll', startPlayback);
-          };
-          window.addEventListener('touchstart', startPlayback, { passive: true, once: true });
-          window.addEventListener('click', startPlayback, { passive: true, once: true });
-          window.addEventListener('scroll', startPlayback, { passive: true, once: true });
-        });
       }
     })();
   </script>

@@ -30,7 +30,7 @@ jobs:
       - name: Stage public invitation assets only
         run: |
           mkdir -p _site
-          cp index.html memories.html admin.html couple-origami.mp4 couple-video.mp4 couple-poster.jpg og-preview.jpg og-preview.png og-preview.svg ganesha-emblem.png ganesha-emblem.webp _site/
+          cp index.html memories.html admin.html couple-portrait.jpg og-preview.jpg og-preview.png og-preview.svg ganesha-emblem.png ganesha-emblem.webp _site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
